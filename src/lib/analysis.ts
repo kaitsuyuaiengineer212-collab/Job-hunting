@@ -1,0 +1,174 @@
+import type { Exercise, MenuTemplate, MuscleGroup, WorkoutSession } from '../types'
+
+export interface ExerciseHistoryPoint {
+  date: string
+  maxWeight: number
+  totalVolume: number
+  totalReps: number
+}
+
+export function getExerciseHistory(sessions: WorkoutSession[], exerciseId: string): ExerciseHistoryPoint[] {
+  return sessions
+    .filter((s) => s.exerciseLogs.some((l) => l.exerciseId === exerciseId))
+    .map((s) => {
+      const log = s.exerciseLogs.find((l) => l.exerciseId === exerciseId)!
+      const maxWeight = Math.max(...log.sets.map((set) => set.weight))
+      const totalVolume = log.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+      const totalReps = log.sets.reduce((sum, set) => sum + set.reps, 0)
+      return { date: s.date, maxWeight, totalVolume, totalReps }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export type SuggestionLevel = 'increase' | 'hold' | 'deload' | 'no-data'
+
+export interface TargetSuggestion {
+  exerciseId: string
+  level: SuggestionLevel
+  message: string
+  suggestedWeight?: number
+}
+
+const WEIGHT_STEP = 2.5
+
+export function suggestNextTarget(
+  sessions: WorkoutSession[],
+  exercise: Exercise,
+  targetReps = 10,
+): TargetSuggestion {
+  const history = getExerciseHistory(sessions, exercise.id)
+  if (history.length === 0) {
+    return { exerciseId: exercise.id, level: 'no-data', message: 'まだ記録がありません。まずは1回記録してみましょう。' }
+  }
+
+  const last = history[history.length - 1]
+  const lastSession = sessions
+    .filter((s) => s.date === last.date)
+    .flatMap((s) => s.exerciseLogs)
+    .find((l) => l.exerciseId === exercise.id)!
+
+  const allSetsHitTarget = lastSession.sets.length > 0 && lastSession.sets.every((set) => set.reps >= targetReps)
+  const avgReps = lastSession.sets.reduce((sum, s) => sum + s.reps, 0) / lastSession.sets.length
+
+  if (allSetsHitTarget) {
+    return {
+      exerciseId: exercise.id,
+      level: 'increase',
+      suggestedWeight: last.maxWeight + WEIGHT_STEP,
+      message: `前回は全セットで目標${targetReps}回を達成。次回は${last.maxWeight + WEIGHT_STEP}kgに挑戦しましょう。`,
+    }
+  }
+
+  if (avgReps < targetReps * 0.6) {
+    return {
+      exerciseId: exercise.id,
+      level: 'deload',
+      suggestedWeight: Math.max(0, last.maxWeight - WEIGHT_STEP),
+      message: `前回は目標レップ数を大きく下回りました(平均${avgReps.toFixed(1)}回)。重量を少し落として${Math.max(0, last.maxWeight - WEIGHT_STEP)}kgでフォーム重視にしましょう。`,
+    }
+  }
+
+  return {
+    exerciseId: exercise.id,
+    level: 'hold',
+    suggestedWeight: last.maxWeight,
+    message: `前回と同じ${last.maxWeight}kgのまま、目標${targetReps}回の達成を目指しましょう。`,
+  }
+}
+
+export interface StagnationInfo {
+  exerciseId: string
+  isStagnant: boolean
+  sessionsChecked: number
+}
+
+export function detectStagnation(sessions: WorkoutSession[], exerciseId: string, lookback = 3): StagnationInfo {
+  const history = getExerciseHistory(sessions, exerciseId)
+  const recent = history.slice(-lookback)
+  if (recent.length < lookback) {
+    return { exerciseId, isStagnant: false, sessionsChecked: recent.length }
+  }
+  const weights = recent.map((h) => h.maxWeight)
+  const isStagnant = weights.every((w) => w === weights[0])
+  return { exerciseId, isStagnant, sessionsChecked: recent.length }
+}
+
+export interface MuscleGroupVolume {
+  muscleGroup: MuscleGroup
+  volume: number
+  setCount: number
+}
+
+export function getMuscleGroupVolumes(
+  sessions: WorkoutSession[],
+  exercises: Exercise[],
+  sinceDate: string,
+): MuscleGroupVolume[] {
+  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+  const totals = new Map<MuscleGroup, { volume: number; setCount: number }>()
+
+  for (const session of sessions) {
+    if (session.date < sinceDate) continue
+    for (const log of session.exerciseLogs) {
+      const exercise = exerciseById.get(log.exerciseId)
+      if (!exercise) continue
+      const current = totals.get(exercise.muscleGroup) ?? { volume: 0, setCount: 0 }
+      current.volume += log.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+      current.setCount += log.sets.length
+      totals.set(exercise.muscleGroup, current)
+    }
+  }
+
+  return Array.from(totals.entries()).map(([muscleGroup, v]) => ({ muscleGroup, ...v }))
+}
+
+export interface GapAnalysis {
+  neglectedMuscleGroups: MuscleGroup[]
+  neglectedMenuExercises: { exerciseId: string; exerciseName: string; daysSinceLast: number | null }[]
+  stagnantExercises: string[]
+}
+
+const ALL_MUSCLE_GROUPS: MuscleGroup[] = ['胸', '背中', '肩', '脚', '腕', '腹筋']
+
+export function analyzeGaps(
+  sessions: WorkoutSession[],
+  exercises: Exercise[],
+  menus: MenuTemplate[],
+  today: string,
+  windowDays = 7,
+): GapAnalysis {
+  const since = shiftDate(today, -windowDays)
+  const volumes = getMuscleGroupVolumes(sessions, exercises, since)
+  const trainedGroups = new Set(volumes.filter((v) => v.setCount > 0).map((v) => v.muscleGroup))
+  const groupsInMenus = new Set(
+    menus.flatMap((m) => m.exercises.map((me) => exercises.find((e) => e.id === me.exerciseId)?.muscleGroup)),
+  )
+  const relevantGroups = groupsInMenus.size > 0 ? Array.from(groupsInMenus).filter((g): g is MuscleGroup => !!g) : ALL_MUSCLE_GROUPS
+  const neglectedMuscleGroups = relevantGroups.filter((g) => !trainedGroups.has(g))
+
+  const menuExerciseIds = new Set(menus.flatMap((m) => m.exercises.map((e) => e.exerciseId)))
+  const neglectedMenuExercises = Array.from(menuExerciseIds).map((exerciseId) => {
+    const exercise = exercises.find((e) => e.id === exerciseId)
+    const history = getExerciseHistory(sessions, exerciseId)
+    const lastDate = history.length > 0 ? history[history.length - 1].date : null
+    const daysSinceLast = lastDate ? daysBetween(lastDate, today) : null
+    return { exerciseId, exerciseName: exercise?.name ?? '不明な種目', daysSinceLast }
+  }).filter((e) => e.daysSinceLast === null || e.daysSinceLast > windowDays)
+
+  const stagnantExercises = exercises
+    .filter((e) => detectStagnation(sessions, e.id).isStagnant)
+    .map((e) => e.id)
+
+  return { neglectedMuscleGroups, neglectedMenuExercises, stagnantExercises }
+}
+
+function shiftDate(date: string, days: number): string {
+  const d = new Date(date)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function daysBetween(from: string, to: string): number {
+  const ms = new Date(to).getTime() - new Date(from).getTime()
+  return Math.round(ms / (1000 * 60 * 60 * 24))
+}
