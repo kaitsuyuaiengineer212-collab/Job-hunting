@@ -5,7 +5,7 @@ export function Chip({
 }: {
   active?: boolean
   onClick?: () => void
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <button
@@ -22,3 +22,4 @@ export function Chip({
     </button>
   )
 }
+import type { ReactNode } from 'react'

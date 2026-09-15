@@ -1,6 +1,16 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
-export function Card({ children, tone }: { children: ReactNode; tone?: 'accent' | 'critical' | 'warning' | 'good' }) {
+type CardTone = 'accent' | 'critical' | 'warning' | 'good'
+
+interface CardProps {
+  children: ReactNode
+  tone?: CardTone
+  padding?: 'p-3' | 'p-4' | 'p-5'
+  className?: string
+  style?: CSSProperties
+}
+
+export function Card({ children, tone, padding = 'p-5', className = '', style }: CardProps) {
   const bg =
     tone === 'accent'
       ? 'var(--accent)'
@@ -13,7 +23,7 @@ export function Card({ children, tone }: { children: ReactNode; tone?: 'accent' 
             : 'var(--bg-elevated)'
   const color = tone === 'accent' ? 'var(--accent-on)' : 'var(--label)'
   return (
-    <div className="rounded-2xl p-5" style={{ background: bg, color, boxShadow: tone ? undefined : 'var(--shadow-card)' }}>
+    <div className={`rounded-2xl ${padding} ${className}`} style={{ background: bg, color, boxShadow: tone ? undefined : 'var(--shadow-card)', ...style }}>
       {children}
     </div>
   )

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useAppStore } from '../store'
 import type { MenuExercise, MenuTemplate } from '../types'
 import { Screen } from './Layout'
-import { SectionHeading } from './ui/Card'
+import { Card, SectionHeading } from './ui/Card'
 import { GroupedList, Row } from './ui/List'
 import { Chip } from './ui/Chip'
 import { Button } from './ui/Button'
@@ -21,7 +21,7 @@ export function MenuManager() {
   const [draftExercises, setDraftExercises] = useState<MenuExercise[]>([])
   const [pickerExerciseId, setPickerExerciseId] = useState(exercises[0]?.id ?? '')
 
-  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+  const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
 
   function toggleWeekday(day: number) {
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
@@ -102,7 +102,7 @@ export function MenuManager() {
           <Plus size={16} /> New Menu
         </Button>
       ) : (
-        <section className="rounded-2xl p-4 flex flex-col gap-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+        <Card padding="p-4" className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span className="text-headline label">New Menu</span>
             <button onClick={() => setShowForm(false)} className="active:opacity-60" style={{ color: 'var(--label-tertiary)' }}>
@@ -167,7 +167,7 @@ export function MenuManager() {
           </div>
 
           <Button onClick={saveMenu}>Save Menu</Button>
-        </section>
+        </Card>
       )}
     </Screen>
   )

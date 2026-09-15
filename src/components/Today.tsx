@@ -19,7 +19,7 @@ import {
 } from '../lib/insights'
 import { todayISO } from '../lib/date'
 import { Screen } from './Layout'
-import { SectionHeading } from './ui/Card'
+import { Card, SectionHeading } from './ui/Card'
 import { GroupedList, Row } from './ui/List'
 import { Button } from './ui/Button'
 import { FlagDot, Flame, Layers, TrendingUp } from './ui/icons'
@@ -39,10 +39,35 @@ const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土']
 
 type Insight = { key: string; tone: 'critical' | 'warning' | 'good' | 'info'; text: string }
 
+function buildInsights({ gaps, dropoffs, lifetimeNeglected, stagnationDiagnoses, plateauCandidates, substitution, skew, correlation, phase }: {
+  gaps: ReturnType<typeof analyzeGaps>
+  dropoffs: ReturnType<typeof detectAdherenceDropoff>
+  lifetimeNeglected: MuscleGroup[]
+  stagnationDiagnoses: NonNullable<ReturnType<typeof diagnoseStagnation>>[]
+  plateauCandidates: ReturnType<typeof forecastPlateau>[]
+  substitution: ReturnType<typeof suggestSubstitution>
+  skew: ReturnType<typeof detectDistributionSkew>
+  correlation: ReturnType<typeof findCorrelatedExercises>
+  phase: ReturnType<typeof suggestPhaseShift>
+}): Insight[] {
+  const insights: Insight[] = []
+  if (gaps.neglectedMuscleGroups.length > 0) insights.push({ key: 'muscle', tone: 'critical', text: `直近7日間、${gaps.neglectedMuscleGroups.join('・')}を鍛えていません` })
+  dropoffs.forEach((dropoff) => insights.push({ key: `dropoff-${dropoff.menuId}-${dropoff.weekday}`, tone: 'critical', text: `「${dropoff.menuName}」の${WEEKDAYS_JA[dropoff.weekday]}曜日、直近${dropoff.scheduledCount}回連続で未実施です` }))
+  if (lifetimeNeglected.length > 0) insights.push({ key: 'lifetime', tone: 'critical', text: `記録開始から一度も${lifetimeNeglected.join('・')}を鍛えていません` })
+  gaps.neglectedMenuExercises.forEach((exercise) => insights.push({ key: `menu-${exercise.exerciseId}`, tone: 'warning', text: `${exercise.exerciseName}をメニューに設定していますが、${exercise.daysSinceLast === null ? 'まだ記録がありません' : `${exercise.daysSinceLast}日間やっていません`}` }))
+  stagnationDiagnoses.forEach((diagnosis) => insights.push({ key: `stag-${diagnosis.exerciseId}`, tone: 'warning', text: diagnosis.message }))
+  plateauCandidates.forEach((candidate) => insights.push({ key: `plateau-${candidate.exerciseId}`, tone: 'warning', text: candidate.message }))
+  if (substitution) insights.push({ key: 'substitution', tone: 'warning', text: `${substitution.exerciseName}が${substitution.weeksStreak}週連続です。${substitution.substituteName}に変えてみては?` })
+  if (skew.isSkewed) insights.push({ key: 'skew', tone: 'warning', text: `直近4週間、${skew.topWeekdays.map((weekday) => WEEKDAYS_JA[weekday]).join('・')}曜日にボリュームの${Math.round(skew.sharePct)}%が集中しています` })
+  if (correlation) insights.push({ key: 'correlation', tone: 'info', text: `${correlation.nameA}と${correlation.nameB}の重量は連動して伸びる傾向があります(相関 ${correlation.correlation.toFixed(2)})` })
+  if (phase.suggestSwitch) insights.push({ key: 'phase', tone: 'info', text: phase.message })
+  return insights
+}
+
 export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   const { exercises, sessions, menus, setMenus } = useAppStore()
   const today = todayISO()
-  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+  const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
   const [deloadCreated, setDeloadCreated] = useState(false)
 
   const weekly = useMemo(() => getWeeklyStats(sessions, today), [sessions, today])
@@ -61,7 +86,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   const narrative = useMemo(() => generateWeeklyNarrative(sessions, exercises, today), [sessions, exercises, today])
 
   const stagnationDiagnoses = useMemo(
-    () => exercises.map((e) => diagnoseStagnation(sessions, e)).filter((d) => d !== null),
+    () => exercises.map((exercise) => diagnoseStagnation(sessions, exercise)).filter((diagnosis): diagnosis is NonNullable<typeof diagnosis> => diagnosis !== null),
     [sessions, exercises],
   )
 
@@ -88,48 +113,10 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   const correlation = useMemo(() => findCorrelatedExercises(sessions, exercises), [sessions, exercises])
   const phase = useMemo(() => suggestPhaseShift(sessions, today), [sessions, today])
 
-  const insights: Insight[] = []
-  if (gaps.neglectedMuscleGroups.length > 0) {
-    insights.push({ key: 'muscle', tone: 'critical', text: `直近7日間、${gaps.neglectedMuscleGroups.join('・')}を鍛えていません` })
-  }
-  for (const d of dropoffs) {
-    insights.push({ key: `dropoff-${d.menuId}-${d.weekday}`, tone: 'critical', text: `「${d.menuName}」の${WEEKDAYS_JA[d.weekday]}曜日、直近${d.scheduledCount}回連続で未実施です` })
-  }
-  if (lifetimeNeglected.length > 0) {
-    insights.push({ key: 'lifetime', tone: 'critical', text: `記録開始から一度も${lifetimeNeglected.join('・')}を鍛えていません` })
-  }
-  for (const e of gaps.neglectedMenuExercises) {
-    insights.push({
-      key: `menu-${e.exerciseId}`,
-      tone: 'warning',
-      text: `${e.exerciseName}をメニューに設定していますが、${e.daysSinceLast === null ? 'まだ記録がありません' : `${e.daysSinceLast}日間やっていません`}`,
-    })
-  }
-  for (const d of stagnationDiagnoses) {
-    insights.push({ key: `stag-${d!.exerciseId}`, tone: 'warning', text: d!.message })
-  }
-  for (const p of plateauCandidates) {
-    insights.push({ key: `plateau-${p.exerciseId}`, tone: 'warning', text: p.message })
-  }
-  if (substitution) {
-    insights.push({
-      key: 'substitution',
-      tone: 'warning',
-      text: `${substitution.exerciseName}が${substitution.weeksStreak}週連続です。${substitution.substituteName}に変えてみては?`,
-    })
-  }
-  if (skew.isSkewed) {
-    insights.push({ key: 'skew', tone: 'warning', text: `直近4週間、${skew.topWeekdays.map((w) => WEEKDAYS_JA[w]).join('・')}曜日にボリュームの${Math.round(skew.sharePct)}%が集中しています` })
-  }
-  if (correlation) {
-    insights.push({ key: 'correlation', tone: 'info', text: `${correlation.nameA}と${correlation.nameB}の重量は連動して伸びる傾向があります(相関 ${correlation.correlation.toFixed(2)})` })
-  }
-  if (phase.suggestSwitch) {
-    insights.push({ key: 'phase', tone: 'info', text: phase.message })
-  }
+  const insights = buildInsights({ gaps, dropoffs, lifetimeNeglected, stagnationDiagnoses, plateauCandidates, substitution, skew, correlation, phase })
 
   const deloadTargets = Array.from(
-    new Set([...stagnationDiagnoses.map((d) => d!.exerciseId), ...plateauCandidates.map((p) => p.exerciseId)]),
+    new Set([...stagnationDiagnoses.map((diagnosis) => diagnosis.exerciseId), ...plateauCandidates.map((candidate) => candidate.exerciseId)]),
   )
 
   function createDeloadMenu() {
@@ -142,11 +129,11 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   if (sessions.length === 0) {
     return (
       <Screen title="Today">
-        <div className="rounded-2xl p-5" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+        <Card>
           <p className="text-headline label mb-1">Welcome 💪</p>
           <p className="text-subhead label-secondary mb-4">Log your first workout to see your stats here.</p>
           <Button onClick={onGoToRecord}>Start Logging</Button>
-        </div>
+        </Card>
       </Screen>
     )
   }
@@ -161,9 +148,9 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
 
       <section>
         <SectionHeading>This Week</SectionHeading>
-        <div className="rounded-2xl p-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+        <Card padding="p-4">
           <p className="text-subhead label">{narrative}</p>
-        </div>
+        </Card>
       </section>
 
       {leverage.length > 0 && (
@@ -186,7 +173,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
       {muscleData.length > 0 && (
         <section>
           <SectionHeading>Muscle Balance (30d)</SectionHeading>
-          <div className="rounded-2xl p-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+          <Card padding="p-4">
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -210,14 +197,14 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </Card>
         </section>
       )}
 
       {trends.length > 0 && (
         <section>
           <SectionHeading>Progress vs Last Session</SectionHeading>
-          <div className="rounded-2xl p-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+          <Card padding="p-4">
             <div style={{ height: Math.max(140, trends.length * 40) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trends} layout="vertical" margin={{ left: 8, right: 40 }}>
@@ -241,7 +228,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </Card>
         </section>
       )}
 
@@ -287,7 +274,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
 
 function StatTile({ icon, label, value, unit }: { icon: React.ReactNode; label: string; value: string; unit?: string }) {
   return (
-    <div className="rounded-2xl p-3 flex flex-col gap-2" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+    <Card padding="p-3" className="flex flex-col gap-2">
       <span style={{ color: 'var(--accent)' }}>{icon}</span>
       <div>
         <span className="text-title3 label tabular-nums">{value}</span>
@@ -296,6 +283,6 @@ function StatTile({ icon, label, value, unit }: { icon: React.ReactNode; label: 
       <span className="text-caption1 label-tertiary normal-case" style={{ fontWeight: 500 }}>
         {label}
       </span>
-    </div>
+    </Card>
   )
 }

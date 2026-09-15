@@ -7,6 +7,13 @@ export interface ExerciseHistoryPoint {
   totalReps: number
 }
 
+export function getSessionVolume(session: WorkoutSession): number {
+  return session.exerciseLogs.reduce(
+    (total, log) => total + log.sets.reduce((logTotal, set) => logTotal + set.weight * set.reps, 0),
+    0,
+  )
+}
+
 export function getExerciseHistory(sessions: WorkoutSession[], exerciseId: string): ExerciseHistoryPoint[] {
   return sessions
     .filter((s) => s.exerciseLogs.some((l) => l.exerciseId === exerciseId))
@@ -202,10 +209,7 @@ export interface WeeklyStats {
 export function getWeeklyStats(sessions: WorkoutSession[], today: string, windowDays = 7): WeeklyStats {
   const since = shiftDate(today, -windowDays)
   const inWindow = sessions.filter((s) => s.date >= since && s.date <= today)
-  const volume = inWindow.reduce(
-    (sum, s) => sum + s.exerciseLogs.reduce((eSum, l) => eSum + l.sets.reduce((sSum, set) => sSum + set.weight * set.reps, 0), 0),
-    0,
-  )
+  const volume = inWindow.reduce((sum, session) => sum + getSessionVolume(session), 0)
   const trainedDates = new Set(sessions.map((s) => s.date))
   let streakDays = 0
   let cursor = today

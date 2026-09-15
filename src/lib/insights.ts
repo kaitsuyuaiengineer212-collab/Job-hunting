@@ -5,6 +5,7 @@ import {
   getExerciseHistory,
   getExerciseTrends,
   getRecentExerciseIds,
+  getSessionVolume,
   getWeeklyStats,
   shiftDate,
   type ExerciseHistoryPoint,
@@ -282,10 +283,7 @@ export function generateWeeklyNarrative(sessions: WorkoutSession[], exercises: E
   const since14 = shiftDate(today, -14)
   const since7 = shiftDate(today, -7)
   const lastWeekSessions = sessions.filter((s) => s.date >= since14 && s.date < since7)
-  const lastWeekVolume = lastWeekSessions.reduce(
-    (sum, s) => sum + s.exerciseLogs.reduce((e, l) => e + l.sets.reduce((ss, set) => ss + set.weight * set.reps, 0), 0),
-    0,
-  )
+  const lastWeekVolume = lastWeekSessions.reduce((sum, session) => sum + getSessionVolume(session), 0)
   const trends = getExerciseTrends(sessions, exercises)
   const best = trends[0]
   const worst = trends[trends.length - 1]
@@ -383,7 +381,7 @@ export function detectDistributionSkew(sessions: WorkoutSession[], today: string
   const volumeByWeekday = new Array(7).fill(0)
   for (const s of recent) {
     const wd = new Date(s.date).getDay()
-    volumeByWeekday[wd] += s.exerciseLogs.reduce((sum, l) => sum + l.sets.reduce((ss, set) => ss + set.weight * set.reps, 0), 0)
+    volumeByWeekday[wd] += getSessionVolume(s)
   }
   const total = volumeByWeekday.reduce((a, b) => a + b, 0)
   if (total === 0 || recent.length < 4) return { topWeekdays: [], sharePct: 0, isSkewed: false }

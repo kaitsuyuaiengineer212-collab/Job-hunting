@@ -1,5 +1,8 @@
 export type MuscleGroup = '胸' | '背中' | '肩' | '脚' | '腕' | '腹筋' | 'その他'
 
+export const MUSCLE_GROUPS = ['胸', '背中', '肩', '脚', '腕', '腹筋', 'その他'] as const satisfies readonly MuscleGroup[]
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
 export interface Exercise {
   id: string
   name: string

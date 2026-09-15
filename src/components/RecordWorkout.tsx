@@ -5,15 +5,13 @@ import { todayISO } from '../lib/date'
 import { getExerciseHistory, getRecentExerciseIds } from '../lib/analysis'
 import { getPersonalRecord } from '../lib/insights'
 import { Screen } from './Layout'
-import { SectionHeading } from './ui/Card'
+import { Card, SectionHeading } from './ui/Card'
 import { Chip } from './ui/Chip'
 import { Button } from './ui/Button'
 import { Stepper } from './ui/Stepper'
 import { Calendar } from './ui/Calendar'
 import { Plus, X } from './ui/icons'
-import type { Exercise, ExerciseLog, MuscleGroup } from '../types'
-
-const MUSCLE_GROUPS: MuscleGroup[] = ['胸', '背中', '肩', '脚', '腕', '腹筋', 'その他']
+import { MUSCLE_GROUPS, type Exercise, type ExerciseLog, type MuscleGroup, type SetEntry, type WorkoutSession } from '../types'
 
 export function RecordWorkout() {
   const { exercises, setExercises, sessions, setSessions, menus } = useAppStore()
@@ -26,7 +24,7 @@ export function RecordWorkout() {
   const [newExerciseGroup, setNewExerciseGroup] = useState<MuscleGroup>('その他')
   const [savedMessage, setSavedMessage] = useState('')
 
-  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+  const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
   const markedDates = useMemo(() => new Set(sessions.map((s) => s.date)), [sessions])
 
   const todaysMenuExercises = useMemo(() => {
@@ -143,55 +141,18 @@ export function RecordWorkout() {
       )}
 
       <section className="flex flex-col gap-3">
-        {logs.map((log) => {
-          const exercise = exerciseById.get(log.exerciseId)
-          return (
-            <div key={log.exerciseId} className="rounded-2xl p-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-headline label">{exercise?.name}</span>
-                <button
-                  aria-label={`Remove ${exercise?.name}`}
-                  onClick={() => removeExercise(log.exerciseId)}
-                  className="flex items-center justify-center rounded-full active:opacity-60"
-                  style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              {(() => {
-                const pr = getPersonalRecord(sessions, log.exerciseId)
-                const currentMax = Math.max(...log.sets.map((s) => s.weight))
-                if (pr === null) return null
-                const isNewPr = currentMax > pr
-                return (
-                  <p className="text-footnote mb-2" style={{ color: isNewPr ? 'var(--good)' : 'var(--label-tertiary)' }}>
-                    {isNewPr ? `New PR! (previous ${pr}kg)` : `PR ${pr}kg — ${(pr - currentMax).toFixed(1)}kg to beat`}
-                  </p>
-                )
-              })()}
-              <div className="flex flex-col gap-2.5">
-                {log.sets.map((set, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-footnote label-tertiary w-6">{i + 1}</span>
-                    <Stepper label="Weight" value={set.weight} onChange={(v) => updateSet(log.exerciseId, i, 'weight', v)} step={2.5} decimals={1} unit="kg" />
-                    <Stepper label="Reps" value={set.reps} onChange={(v) => updateSet(log.exerciseId, i, 'reps', v)} step={1} min={1} unit="回" />
-                    <button
-                      aria-label={`Remove set ${i + 1}`}
-                      onClick={() => removeSet(log.exerciseId, i)}
-                      className="ml-auto flex items-center justify-center active:opacity-50"
-                      style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => addSet(log.exerciseId)} className="text-subhead mt-3 active:opacity-60" style={{ color: 'var(--accent-strong)' }}>
-                + Add Set
-              </button>
-            </div>
-          )
-        })}
+        {logs.map((log) => (
+          <WorkoutExerciseCard
+            key={log.exerciseId}
+            log={log}
+            exercise={exerciseById.get(log.exerciseId)}
+            sessions={sessions}
+            onRemove={() => removeExercise(log.exerciseId)}
+            onUpdateSet={(setIndex, field, value) => updateSet(log.exerciseId, setIndex, field, value)}
+            onAddSet={() => addSet(log.exerciseId)}
+            onRemoveSet={(setIndex) => removeSet(log.exerciseId, setIndex)}
+          />
+        ))}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -200,7 +161,7 @@ export function RecordWorkout() {
             <Plus size={16} /> More Exercises
           </Button>
         ) : (
-          <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+          <Card padding="p-4" className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <select
                 value={pickerExerciseId}
@@ -247,7 +208,7 @@ export function RecordWorkout() {
                 </Button>
               </div>
             )}
-          </div>
+          </Card>
         )}
       </section>
 
@@ -260,5 +221,46 @@ export function RecordWorkout() {
         <p className="text-subhead label-secondary">Tap "More Exercises" to log your first set.</p>
       )}
     </Screen>
+  )
+}
+
+interface WorkoutExerciseCardProps {
+  log: ExerciseLog
+  exercise: Exercise | undefined
+  sessions: WorkoutSession[]
+  onRemove: () => void
+  onUpdateSet: (setIndex: number, field: keyof SetEntry, value: number) => void
+  onAddSet: () => void
+  onRemoveSet: (setIndex: number) => void
+}
+
+function WorkoutExerciseCard({ log, exercise, sessions, onRemove, onUpdateSet, onAddSet, onRemoveSet }: WorkoutExerciseCardProps) {
+  const personalRecord = getPersonalRecord(sessions, log.exerciseId)
+  const currentMax = Math.max(...log.sets.map((set) => set.weight))
+  const isNewPersonalRecord = personalRecord !== null && currentMax > personalRecord
+
+  return (
+    <Card padding="p-4">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-headline label">{exercise?.name}</span>
+        <button aria-label={`Remove ${exercise?.name}`} onClick={onRemove} className="flex items-center justify-center rounded-full active:opacity-60" style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}>
+          <X size={16} />
+        </button>
+      </div>
+      {personalRecord !== null && <p className="text-footnote mb-2" style={{ color: isNewPersonalRecord ? 'var(--good)' : 'var(--label-tertiary)' }}>{isNewPersonalRecord ? `New PR! (previous ${personalRecord}kg)` : `PR ${personalRecord}kg — ${(personalRecord - currentMax).toFixed(1)}kg to beat`}</p>}
+      <div className="flex flex-col gap-2.5">
+        {log.sets.map((set, index) => (
+          <div key={index} className="flex items-center gap-3">
+            <span className="text-footnote label-tertiary w-6">{index + 1}</span>
+            <Stepper label="Weight" value={set.weight} onChange={(value) => onUpdateSet(index, 'weight', value)} step={2.5} decimals={1} unit="kg" />
+            <Stepper label="Reps" value={set.reps} onChange={(value) => onUpdateSet(index, 'reps', value)} step={1} min={1} unit="回" />
+            <button aria-label={`Remove set ${index + 1}`} onClick={() => onRemoveSet(index)} className="ml-auto flex items-center justify-center active:opacity-50" style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}>
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={onAddSet} className="text-subhead mt-3 active:opacity-60" style={{ color: 'var(--accent-strong)' }}>+ Add Set</button>
+    </Card>
   )
 }
