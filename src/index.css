@@ -13,10 +13,10 @@
   --label-tertiary: rgba(60, 60, 67, 0.32);
   --fill-secondary: rgba(120, 120, 128, 0.12);
 
-  /* Brand accent — "iron blue" */
-  --accent: #2c5079;
-  --accent-strong: #1d3a58;
-  --accent-soft: #e5edf4;
+  /* Brand accent — "ember" */
+  --accent: #f2542d;
+  --accent-strong: #c23d14;
+  --accent-soft: #fdeae1;
   --accent-on: #ffffff;
 
   /* Semantic (independent of accent) */
@@ -24,8 +24,8 @@
   --good-soft: #e4f5ea;
   --warning: #a06a00;
   --warning-soft: #fbefd9;
-  --critical: #d7362a;
-  --critical-soft: #fce6e3;
+  --critical: #c81e3a;
+  --critical-soft: #fbe3e8;
 
   --glass-bg: rgba(255, 255, 255, 0.72);
   --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.03), 0 6px 16px -10px rgba(0, 0, 0, 0.18);
@@ -42,17 +42,17 @@
     --label-tertiary: rgba(235, 235, 245, 0.3);
     --fill-secondary: rgba(120, 120, 128, 0.24);
 
-    --accent: #7fb0e0;
-    --accent-strong: #a9cdef;
-    --accent-soft: #1c2c3c;
-    --accent-on: #06131f;
+    --accent: #ff8a5c;
+    --accent-strong: #ffb08c;
+    --accent-soft: #3a2013;
+    --accent-on: #2b0e02;
 
     --good: #3ed07d;
     --good-soft: #12281a;
     --warning: #e7b03e;
     --warning-soft: #2e2410;
-    --critical: #ff6b60;
-    --critical-soft: #351613;
+    --critical: #ff6b85;
+    --critical-soft: #3a1620;
 
     --glass-bg: rgba(28, 28, 30, 0.72);
     --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4), 0 10px 22px -12px rgba(0, 0, 0, 0.6);
@@ -69,17 +69,17 @@
   --label-tertiary: rgba(235, 235, 245, 0.3);
   --fill-secondary: rgba(120, 120, 128, 0.24);
 
-  --accent: #7fb0e0;
-  --accent-strong: #a9cdef;
-  --accent-soft: #1c2c3c;
-  --accent-on: #06131f;
+  --accent: #ff8a5c;
+  --accent-strong: #ffb08c;
+  --accent-soft: #3a2013;
+  --accent-on: #2b0e02;
 
   --good: #3ed07d;
   --good-soft: #12281a;
   --warning: #e7b03e;
   --warning-soft: #2e2410;
-  --critical: #ff6b60;
-  --critical-soft: #351613;
+  --critical: #ff6b85;
+  --critical-soft: #3a1620;
 
   --glass-bg: rgba(28, 28, 30, 0.72);
   --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4), 0 10px 22px -12px rgba(0, 0, 0, 0.6);
@@ -113,3 +113,11 @@ button, input, select {
 .label { color: var(--label); }
 .label-secondary { color: var(--label-secondary); }
 .label-tertiary { color: var(--label-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

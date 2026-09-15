@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from 'framer-motion'
 import { Minus, Plus } from './icons'
 
 export function Stepper({
@@ -20,28 +21,43 @@ export function Stepper({
   const round = (n: number) => Number(n.toFixed(decimals))
   return (
     <div className="inline-flex items-center rounded-xl overflow-hidden" style={{ background: 'var(--fill-secondary)' }}>
-      <button
+      <motion.button
         type="button"
         aria-label={`Decrease ${label} by ${step}${unit}`}
         onClick={() => onChange(Math.max(min, round(value - step)))}
-        className="flex items-center justify-center active:opacity-50"
+        whileTap={{ scale: 0.82 }}
+        transition={{ type: 'spring', stiffness: 600, damping: 20 }}
+        className="flex items-center justify-center"
         style={{ width: 44, height: 44, color: 'var(--accent-strong)' }}
       >
         <Minus size={18} />
-      </button>
-      <span className="text-headline label text-center tabular-nums" style={{ minWidth: 56 }}>
-        {value.toFixed(decimals)}
+      </motion.button>
+      <span className="text-headline label text-center tabular-nums overflow-hidden" style={{ minWidth: 56 }}>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={value}
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -8, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="inline-block"
+          >
+            {value.toFixed(decimals)}
+          </motion.span>
+        </AnimatePresence>
         <span className="text-footnote label-secondary ml-0.5">{unit}</span>
       </span>
-      <button
+      <motion.button
         type="button"
         aria-label={`Increase ${label} by ${step}${unit}`}
         onClick={() => onChange(round(value + step))}
-        className="flex items-center justify-center active:opacity-50"
+        whileTap={{ scale: 0.82 }}
+        transition={{ type: 'spring', stiffness: 600, damping: 20 }}
+        className="flex items-center justify-center"
         style={{ width: 44, height: 44, color: 'var(--accent-strong)' }}
       >
         <Plus size={18} />
-      </button>
+      </motion.button>
     </div>
   )
 }

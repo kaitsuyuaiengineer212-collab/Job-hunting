@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
 import { Home, Dumbbell, ChartColumnBig, ClipboardList } from './ui/icons'
 
 export type TabKey = 'today' | 'record' | 'progress' | 'menu'
@@ -21,7 +22,11 @@ export function Layout({
 }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
-      <main className="flex-1 pb-32">{children}</main>
+      <main className="flex-1 pb-32">
+        <AnimatePresence mode="wait">
+          <ScreenTransition key={active}>{children}</ScreenTransition>
+        </AnimatePresence>
+      </main>
       <nav
         className="fixed bottom-0 inset-x-0 backdrop-blur-xl"
         style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--separator)' }}
@@ -30,22 +35,26 @@ export function Layout({
           {TABS.map(({ key, label, Icon }) => {
             const isActive = active === key
             return (
-              <button
+              <motion.button
                 key={key}
                 onClick={() => onChange(key)}
-                className="flex flex-col items-center gap-1 active:opacity-70"
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                className="flex flex-col items-center gap-1"
                 style={{ minHeight: 56 }}
               >
-                <span
-                  className="flex items-center justify-center rounded-2xl transition-colors"
-                  style={{
-                    width: 52,
-                    height: 34,
-                    background: isActive ? 'var(--accent-soft)' : 'transparent',
-                    color: isActive ? 'var(--accent)' : 'var(--label-tertiary)',
-                  }}
-                >
-                  <Icon size={24} strokeWidth={isActive ? 2.3 : 1.8} />
+                <span className="relative flex items-center justify-center" style={{ width: 52, height: 34 }}>
+                  {isActive && (
+                    <motion.span
+                      layoutId="tab-pill"
+                      className="absolute inset-0 rounded-2xl"
+                      style={{ background: 'var(--accent-soft)' }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative" style={{ color: isActive ? 'var(--accent)' : 'var(--label-tertiary)' }}>
+                    <Icon size={24} strokeWidth={isActive ? 2.3 : 1.8} />
+                  </span>
                 </span>
                 <span
                   className="text-caption1 normal-case tracking-normal"
@@ -53,12 +62,26 @@ export function Layout({
                 >
                   {label}
                 </span>
-              </button>
+              </motion.button>
             )
           })}
         </div>
       </nav>
     </div>
+  )
+}
+
+function ScreenTransition({ children }: { children: ReactNode }) {
+  const reduceMotion = useReducedMotion()
+  return (
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduceMotion ? undefined : { opacity: 0 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
   )
 }
 

@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react'
+import { motion } from 'framer-motion'
+
 export function Chip({
   active,
   onClick,
@@ -8,10 +11,12 @@ export function Chip({
   children: ReactNode
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
-      className="text-subhead font-medium rounded-full px-4 shrink-0 active:scale-[0.96] transition-transform"
+      whileTap={{ scale: 0.94 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+      className="text-subhead font-medium rounded-full px-4 shrink-0 transition-colors duration-200"
       style={{
         height: 36,
         background: active ? 'var(--accent)' : 'var(--fill-secondary)',
@@ -19,7 +24,6 @@ export function Chip({
       }}
     >
       {children}
-    </button>
+    </motion.button>
   )
 }
-import type { ReactNode } from 'react'

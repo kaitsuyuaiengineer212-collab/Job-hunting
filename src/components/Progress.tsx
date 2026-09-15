@@ -119,7 +119,7 @@ export function ProgressScreen() {
               <XAxis dataKey="label" fontSize={11} stroke="var(--label-tertiary)" />
               <YAxis fontSize={11} stroke="var(--label-tertiary)" />
               <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--separator)', borderRadius: 12, fontSize: 13 }} />
-              <Line type="monotone" dataKey="maxWeight" stroke="#3d78ab" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="maxWeight" stroke="#f2703d" strokeWidth={2.5} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
