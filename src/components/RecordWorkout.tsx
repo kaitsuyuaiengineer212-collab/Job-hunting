@@ -11,6 +11,7 @@ import { Button } from './ui/Button'
 import { Stepper } from './ui/Stepper'
 import { Calendar } from './ui/Calendar'
 import { Plus, X } from './ui/icons'
+import { format, parseISO } from 'date-fns'
 import { MUSCLE_GROUPS, type Exercise, type ExerciseLog, type MuscleGroup, type SetEntry, type WorkoutSession } from '../types'
 
 export function RecordWorkout() {
@@ -26,6 +27,7 @@ export function RecordWorkout() {
 
   const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
   const markedDates = useMemo(() => new Set(sessions.map((s) => s.date)), [sessions])
+  const sessionsForDate = useMemo(() => sessions.filter((s) => s.date === date), [sessions, date])
 
   const todaysMenuExercises = useMemo(() => {
     const weekday = new Date(date).getDay()
@@ -113,6 +115,15 @@ export function RecordWorkout() {
       </section>
 
       <Calendar value={date} onChange={setDate} markedDates={markedDates} />
+
+      {sessionsForDate.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <SectionHeading>Recorded on {format(parseISO(date), 'MMM d')}</SectionHeading>
+          {sessionsForDate.map((session) => (
+            <RecordedSessionCard key={session.id} session={session} exerciseById={exerciseById} />
+          ))}
+        </section>
+      )}
 
       {todaysMenuExercises.length > 0 && (
         <section>
@@ -221,6 +232,31 @@ export function RecordWorkout() {
         <p className="text-subhead label-secondary">Tap "More Exercises" to log your first set.</p>
       )}
     </Screen>
+  )
+}
+
+function RecordedSessionCard({ session, exerciseById }: { session: WorkoutSession; exerciseById: Map<string, Exercise> }) {
+  return (
+    <Card padding="p-4" className="flex flex-col gap-3">
+      {session.exerciseLogs.map((log, index) => (
+        <div
+          key={log.exerciseId}
+          className="flex flex-col gap-1.5"
+          style={index > 0 ? { paddingTop: 12, borderTop: '1px solid var(--separator)' } : undefined}
+        >
+          <span className="text-subhead label" style={{ fontWeight: 600 }}>
+            {exerciseById.get(log.exerciseId)?.name ?? '不明な種目'}
+          </span>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {log.sets.map((set, setIndex) => (
+              <span key={setIndex} className="text-footnote label-secondary tabular-nums">
+                {set.weight}kg × {set.reps}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </Card>
   )
 }
 
