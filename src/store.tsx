@@ -52,11 +52,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const hasPulledForUserRef = useRef<string | null>(null)
   const hasMigratedRef = useRef(false)
 
-  // One-time migration for exercise data saved before the JA->EN UI translation.
+  // One-time migration for exercise data saved before the JA->EN UI translation,
+  // plus backfilling any default exercises added to the app since the user's last visit.
   useEffect(() => {
     if (hasMigratedRef.current) return
     hasMigratedRef.current = true
-    setExercises((prev) => prev.map(migrateExercise))
+    setExercises((prev) => {
+      const migrated = prev.map(migrateExercise)
+      const missingDefaults = DEFAULT_EXERCISES.filter((d) => !migrated.some((e) => e.id === d.id))
+      return [...migrated, ...missingDefaults]
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

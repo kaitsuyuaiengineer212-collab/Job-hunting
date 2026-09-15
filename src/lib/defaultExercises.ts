@@ -17,4 +17,13 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   { id: 'triceps-pushdown', name: 'Triceps Pushdown', muscleGroup: 'Arms' },
   { id: 'crunch', name: 'Crunch', muscleGroup: 'Core' },
   { id: 'plank', name: 'Plank', muscleGroup: 'Core' },
+  { id: 'dumbbell-chest-press', name: 'Dumbbell Chest Press', muscleGroup: 'Chest' },
+  { id: 'pec-fly', name: 'Pec Fly', muscleGroup: 'Chest' },
+  { id: 'dumbbell-push', name: 'Dumbbell Push', muscleGroup: 'Chest' },
+  { id: 'incline-smith-press', name: 'Incline Smith Machine Press', muscleGroup: 'Chest' },
+  { id: 'incline-chest-press', name: 'Incline Chest Press', muscleGroup: 'Chest' },
+  { id: 'cable-fly', name: 'Cable Fly', muscleGroup: 'Chest' },
+  { id: 'incline-smith-shoulder-press', name: 'Incline Smith Machine Shoulder Press', muscleGroup: 'Shoulders' },
+  { id: 'cable-arm-curl', name: 'Cable Arm Curl', muscleGroup: 'Arms' },
+  { id: 'cable-pressdown', name: 'Cable Pressdown', muscleGroup: 'Arms' },
 ]

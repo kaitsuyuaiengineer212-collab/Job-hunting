@@ -10,7 +10,7 @@ import { Chip } from './ui/Chip'
 import { Button } from './ui/Button'
 import { Stepper } from './ui/Stepper'
 import { Calendar } from './ui/Calendar'
-import { Plus, X } from './ui/icons'
+import { ChevronLeft, Plus, X } from './ui/icons'
 import { format, parseISO } from 'date-fns'
 import { MUSCLE_COLORS } from '../lib/muscleColors'
 import { MUSCLE_GROUPS, type Exercise, type ExerciseLog, type MuscleGroup, type SetEntry, type WorkoutSession } from '../types'
@@ -20,7 +20,7 @@ export function RecordWorkout() {
   const [date, setDate] = useState(todayISO())
   const [logs, setLogs] = useState<ExerciseLog[]>([])
   const [showPicker, setShowPicker] = useState(false)
-  const [pickerExerciseId, setPickerExerciseId] = useState(exercises[0]?.id ?? '')
+  const [pickerGroup, setPickerGroup] = useState<MuscleGroup | null>(null)
   const [showNewExercise, setShowNewExercise] = useState(false)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseGroup, setNewExerciseGroup] = useState<MuscleGroup>('Other')
@@ -29,6 +29,8 @@ export function RecordWorkout() {
   const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
   const markedDates = useMemo(() => new Set(sessions.map((s) => s.date)), [sessions])
   const sessionsForDate = useMemo(() => sessions.filter((s) => s.date === date), [sessions, date])
+  const groupsWithExercises = useMemo(() => MUSCLE_GROUPS.filter((g) => exercises.some((e) => e.muscleGroup === g)), [exercises])
+  const pickerExercises = useMemo(() => (pickerGroup ? exercises.filter((e) => e.muscleGroup === pickerGroup) : []), [exercises, pickerGroup])
 
   const todaysMenuExercises = useMemo(() => {
     const weekday = new Date(date).getDay()
@@ -59,7 +61,19 @@ export function RecordWorkout() {
     if (!exerciseId || logs.some((l) => l.exerciseId === exerciseId)) return
     const weight = lastWeightFor(exerciseId)
     setLogs((prev) => [...prev, { exerciseId, sets: [{ weight, reps: targetReps }] }])
+    closePicker()
+  }
+
+  function openPicker() {
+    setShowPicker(true)
+    setPickerGroup(null)
+    setShowNewExercise(false)
+  }
+
+  function closePicker() {
     setShowPicker(false)
+    setPickerGroup(null)
+    setShowNewExercise(false)
   }
 
   function updateSet(exerciseId: string, setIndex: number, field: 'weight' | 'reps', value: number) {
@@ -98,7 +112,6 @@ export function RecordWorkout() {
     setExercises((prev) => [...prev, exercise])
     addExercise(exercise.id)
     setNewExerciseName('')
-    setShowNewExercise(false)
   }
 
   function saveSession() {
@@ -179,53 +192,61 @@ export function RecordWorkout() {
 
       <section className="flex flex-col gap-3">
         {!showPicker ? (
-          <Button variant="secondary" onClick={() => setShowPicker(true)} className="self-start">
+          <Button variant="secondary" onClick={openPicker} className="self-start">
             <Plus size={16} /> More Exercises
           </Button>
         ) : (
           <Card padding="p-4" className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <select
-                value={pickerExerciseId}
-                onChange={(e) => setPickerExerciseId(e.target.value)}
-                className="flex-1 min-w-0 text-body rounded-xl px-3 py-2.5"
-                style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
+            <div className="flex items-center justify-between">
+              <span className="text-headline label">{pickerGroup ?? 'Choose a Muscle Group'}</span>
+              <button
+                aria-label={pickerGroup ? 'Back to muscle groups' : 'Close'}
+                onClick={() => (pickerGroup ? setPickerGroup(null) : closePicker())}
+                className="flex items-center justify-center rounded-full active:opacity-60"
+                style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}
               >
-                {exercises.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}({e.muscleGroup})
-                  </option>
-                ))}
-              </select>
-              <Button variant="secondary" onClick={() => addExercise(pickerExerciseId)}>
-                Add
-              </Button>
+                {pickerGroup ? <ChevronLeft size={18} /> : <X size={18} />}
+              </button>
             </div>
+
+            {!pickerGroup ? (
+              <div className="flex flex-wrap gap-2">
+                {groupsWithExercises.map((g) => (
+                  <Chip key={g} tone={MUSCLE_COLORS[g]} onClick={() => setPickerGroup(g)}>
+                    {g}
+                  </Chip>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {pickerExercises.map((e) => (
+                  <Chip key={e.id} active={logs.some((l) => l.exerciseId === e.id)} tone={MUSCLE_COLORS[e.muscleGroup]} onClick={() => addExercise(e.id)}>
+                    {e.name}
+                  </Chip>
+                ))}
+              </div>
+            )}
+
             <button onClick={() => setShowNewExercise((v) => !v)} className="text-subhead text-left active:opacity-60" style={{ color: 'var(--accent-strong)' }}>
               + New Exercise
             </button>
             {showNewExercise && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2">
                 <input
                   value={newExerciseName}
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   placeholder="Exercise name"
-                  className="flex-1 min-w-0 text-body rounded-xl px-3 py-2.5"
+                  className="text-body rounded-xl px-3 py-2.5"
                   style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
                 />
-                <select
-                  value={newExerciseGroup}
-                  onChange={(e) => setNewExerciseGroup(e.target.value as MuscleGroup)}
-                  className="text-body rounded-xl px-2 py-2.5"
-                  style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
-                >
+                <div className="flex flex-wrap gap-2">
                   {MUSCLE_GROUPS.map((g) => (
-                    <option key={g} value={g}>
+                    <Chip key={g} active={newExerciseGroup === g} tone={MUSCLE_COLORS[g]} onClick={() => setNewExerciseGroup(g)}>
                       {g}
-                    </option>
+                    </Chip>
                   ))}
-                </select>
-                <Button variant="secondary" onClick={createCustomExercise}>
+                </div>
+                <Button variant="secondary" onClick={createCustomExercise} className="self-start">
                   Create
                 </Button>
               </div>

@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useAppStore } from '../store'
-import type { MenuExercise, MenuTemplate } from '../types'
+import { MUSCLE_GROUPS, type MenuExercise, type MenuTemplate, type MuscleGroup } from '../types'
+import { MUSCLE_COLORS } from '../lib/muscleColors'
 import { Screen } from './Layout'
 import { Card, SectionHeading } from './ui/Card'
 import { GroupedList, Row } from './ui/List'
 import { Chip } from './ui/Chip'
 import { Button } from './ui/Button'
 import { Stepper } from './ui/Stepper'
-import { Plus, X, ClipboardList } from './ui/icons'
+import { ChevronLeft, Plus, X, ClipboardList } from './ui/icons'
 import { AccountSection } from './AccountSection'
 
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -20,17 +21,19 @@ export function MenuManager() {
   const [name, setName] = useState('')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [draftExercises, setDraftExercises] = useState<MenuExercise[]>([])
-  const [pickerExerciseId, setPickerExerciseId] = useState(exercises[0]?.id ?? '')
+  const [pickerGroup, setPickerGroup] = useState<MuscleGroup | null>(null)
 
   const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
+  const groupsWithExercises = useMemo(() => MUSCLE_GROUPS.filter((g) => exercises.some((e) => e.muscleGroup === g)), [exercises])
+  const pickerExercises = useMemo(() => (pickerGroup ? exercises.filter((e) => e.muscleGroup === pickerGroup) : []), [exercises, pickerGroup])
 
   function toggleWeekday(day: number) {
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
   }
 
-  function addExerciseToDraft() {
-    if (!pickerExerciseId || draftExercises.some((e) => e.exerciseId === pickerExerciseId)) return
-    setDraftExercises((prev) => [...prev, { exerciseId: pickerExerciseId, targetSets: 3, targetReps: 10 }])
+  function addExerciseToDraft(exerciseId: string) {
+    if (!exerciseId || draftExercises.some((e) => e.exerciseId === exerciseId)) return
+    setDraftExercises((prev) => [...prev, { exerciseId, targetSets: 3, targetReps: 10 }])
   }
 
   function updateDraftExercise(exerciseId: string, field: 'targetSets' | 'targetReps', value: number) {
@@ -48,6 +51,7 @@ export function MenuManager() {
     setName('')
     setWeekdays([])
     setDraftExercises([])
+    setPickerGroup(null)
     setShowForm(false)
   }
 
@@ -101,7 +105,7 @@ export function MenuManager() {
       </section>
 
       {!showForm ? (
-        <Button variant="secondary" onClick={() => setShowForm(true)} className="self-start">
+        <Button variant="secondary" onClick={() => { setShowForm(true); setPickerGroup(null) }} className="self-start">
           <Plus size={16} /> New Menu
         </Button>
       ) : (
@@ -134,22 +138,33 @@ export function MenuManager() {
 
           <div>
             <SectionHeading>Exercises</SectionHeading>
-            <div className="flex items-center gap-2 mb-3">
-              <select
-                value={pickerExerciseId}
-                onChange={(e) => setPickerExerciseId(e.target.value)}
-                className="flex-1 min-w-0 text-body rounded-xl px-3 py-2.5"
-                style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
-              >
-                {exercises.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-              </select>
-              <Button variant="secondary" onClick={addExerciseToDraft}>
-                Add
-              </Button>
+            <div className="rounded-2xl p-3 mb-3 flex flex-col gap-3" style={{ background: 'var(--fill-secondary)' }}>
+              <div className="flex items-center justify-between">
+                <span className="text-subhead label">{pickerGroup ?? 'Choose a Muscle Group'}</span>
+                {pickerGroup && (
+                  <button
+                    aria-label="Back to muscle groups"
+                    onClick={() => setPickerGroup(null)}
+                    className="flex items-center justify-center rounded-full active:opacity-60"
+                    style={{ width: 28, height: 28, color: 'var(--label-tertiary)' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!pickerGroup
+                  ? groupsWithExercises.map((g) => (
+                      <Chip key={g} tone={MUSCLE_COLORS[g]} onClick={() => setPickerGroup(g)}>
+                        {g}
+                      </Chip>
+                    ))
+                  : pickerExercises.map((e) => (
+                      <Chip key={e.id} active={draftExercises.some((d) => d.exerciseId === e.id)} tone={MUSCLE_COLORS[e.muscleGroup]} onClick={() => addExerciseToDraft(e.id)}>
+                        {e.name}
+                      </Chip>
+                    ))}
+              </div>
             </div>
             <div className="flex flex-col gap-4">
               {draftExercises.map((de) => (
