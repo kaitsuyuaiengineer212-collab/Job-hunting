@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAppStore } from '../store'
+import { useAuth } from '../auth'
 import { getExerciseHistory, suggestNextTarget } from '../lib/analysis'
 import { analyzeRepDecay, forecastPlateau, getStrengthStandard, projectGoalETA } from '../lib/insights'
+import { getForecast, getRegression, type ForecastResult, type RegressionResult } from '../lib/statsApi'
 import { formatDateJP } from '../lib/date'
 import { Screen } from './Layout'
 import { SectionHeading } from './ui/Card'
@@ -15,6 +17,7 @@ const TIER_LABELS: Record<string, string> = { untrained: 'Untrained', novice: 'N
 
 export function ProgressScreen() {
   const { exercises, sessions, goals, setGoals, bodyweightKg, setBodyweightKg } = useAppStore()
+  const { session } = useAuth()
   const exercisesWithData = exercises.filter((e) => sessions.some((s) => s.exerciseLogs.some((l) => l.exerciseId === e.id)))
   const [exerciseId, setExerciseId] = useState(exercisesWithData[0]?.id ?? '')
   const [goalDraft, setGoalDraft] = useState('')
@@ -22,6 +25,36 @@ export function ProgressScreen() {
   const [bwDraft, setBwDraft] = useState(bodyweightKg ? String(bodyweightKg) : '')
   const [editingBw, setEditingBw] = useState(false)
   const exercise = exercises.find((e) => e.id === exerciseId)
+
+  const [regressionResult, setRegressionResult] = useState<RegressionResult | null>(null)
+  const [forecastResult, setForecastResult] = useState<ForecastResult | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState(false)
+
+  useEffect(() => {
+    const token = session?.access_token
+    if (!token || !exerciseId) {
+      setRegressionResult(null)
+      setForecastResult(null)
+      return
+    }
+    let cancelled = false
+    setStatsLoading(true)
+    setStatsError(false)
+    Promise.all([getRegression(exerciseId, token), getForecast(exerciseId, token)]).then(([reg, fc]) => {
+      if (cancelled) return
+      setStatsLoading(false)
+      if (!reg && !fc) {
+        setStatsError(true)
+        return
+      }
+      setRegressionResult(reg)
+      setForecastResult(fc)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [exerciseId, session?.access_token])
 
   const history = useMemo(() => {
     if (!exerciseId) return []
@@ -135,6 +168,48 @@ export function ProgressScreen() {
           )}
         </div>
       </section>
+
+      {session && (
+        <section>
+          <SectionHeading>Advanced Stats (Python)</SectionHeading>
+          <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+            {statsLoading && <p className="text-subhead label-secondary">Running regression…</p>}
+            {!statsLoading && statsError && <p className="text-subhead label-secondary">Not enough sessions yet for statistical analysis (need at least 3).</p>}
+            {!statsLoading && regressionResult && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-footnote label-secondary">Trend (least squares)</span>
+                  <span className="text-headline tabular-nums" style={{ color: 'var(--accent)' }}>
+                    {regressionResult.slopeKgPerWeek > 0 ? '+' : ''}
+                    {regressionResult.slopeKgPerWeek}kg/week
+                  </span>
+                </div>
+                <p className="text-caption1 label-tertiary normal-case">
+                  R²={regressionResult.rSquared} · p={regressionResult.pValue} · {regressionResult.significant ? 'statistically significant' : 'not yet significant'} (n={regressionResult.sessions})
+                </p>
+              </div>
+            )}
+            {!statsLoading && forecastResult && forecastResult.predictions.length > 0 && (
+              <div className="pt-3" style={{ borderTop: '1px solid var(--separator)' }}>
+                <p className="text-footnote label-secondary mb-2">4-week forecast (95% interval)</p>
+                <div className="flex flex-col gap-1.5">
+                  {forecastResult.predictions.map((p) => (
+                    <div key={p.weeksAhead} className="flex items-center justify-between text-subhead">
+                      <span className="label-secondary">+{p.weeksAhead}w</span>
+                      <span className="tabular-nums label">
+                        {p.predictedWeight}kg
+                        <span className="text-caption1 label-tertiary normal-case ml-1">
+                          ({p.lowerBound}–{p.upperBound})
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {(plateau?.sessionsUntilPlateau !== null || repDecay) && (
         <section>
