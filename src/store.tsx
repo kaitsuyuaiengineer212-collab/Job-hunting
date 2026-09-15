@@ -3,7 +3,25 @@ import { useLocalStorageState } from './hooks/useLocalStorageState'
 import { DEFAULT_EXERCISES } from './lib/defaultExercises'
 import { pullRemoteData, pushCustomExercises, pushMenus, pushProfile, pushSessions } from './lib/sync'
 import { useAuth } from './auth'
-import type { Exercise, MenuTemplate, WorkoutSession } from './types'
+import type { Exercise, MenuTemplate, MuscleGroup, WorkoutSession } from './types'
+
+// Translates exercise data saved before the app's UI switched from Japanese to English.
+const LEGACY_MUSCLE_GROUP_MAP: Record<string, MuscleGroup> = {
+  胸: 'Chest',
+  背中: 'Back',
+  肩: 'Shoulders',
+  脚: 'Legs',
+  腕: 'Arms',
+  腹筋: 'Core',
+  その他: 'Other',
+}
+
+function migrateExercise(exercise: Exercise): Exercise {
+  const defaults = DEFAULT_EXERCISES.find((d) => d.id === exercise.id)
+  if (defaults) return { ...exercise, name: defaults.name, muscleGroup: defaults.muscleGroup }
+  const mapped = LEGACY_MUSCLE_GROUP_MAP[exercise.muscleGroup as string]
+  return mapped ? { ...exercise, muscleGroup: mapped } : exercise
+}
 
 interface AppStore {
   exercises: Exercise[]
@@ -32,6 +50,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null
   const isPullingRef = useRef(false)
   const hasPulledForUserRef = useRef<string | null>(null)
+  const hasMigratedRef = useRef(false)
+
+  // One-time migration for exercise data saved before the JA->EN UI translation.
+  useEffect(() => {
+    if (hasMigratedRef.current) return
+    hasMigratedRef.current = true
+    setExercises((prev) => prev.map(migrateExercise))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Pull remote data once per sign-in; upload local data on first-ever sign-in when remote is empty.
   useEffect(() => {

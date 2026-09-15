@@ -45,7 +45,7 @@ export function suggestNextTarget(
 ): TargetSuggestion {
   const history = getExerciseHistory(sessions, exercise.id)
   if (history.length === 0) {
-    return { exerciseId: exercise.id, level: 'no-data', message: 'まだ記録がありません。まずは1回記録してみましょう。' }
+    return { exerciseId: exercise.id, level: 'no-data', message: 'No records yet. Log your first session to get started.' }
   }
 
   const last = history[history.length - 1]
@@ -62,7 +62,7 @@ export function suggestNextTarget(
       exerciseId: exercise.id,
       level: 'increase',
       suggestedWeight: last.maxWeight + WEIGHT_STEP,
-      message: `前回は全セットで目標${targetReps}回を達成。次回は${last.maxWeight + WEIGHT_STEP}kgに挑戦しましょう。`,
+      message: `Every set hit the ${targetReps}-rep target last time. Try ${last.maxWeight + WEIGHT_STEP}kg next session.`,
     }
   }
 
@@ -71,7 +71,7 @@ export function suggestNextTarget(
       exerciseId: exercise.id,
       level: 'deload',
       suggestedWeight: Math.max(0, last.maxWeight - WEIGHT_STEP),
-      message: `前回は目標レップ数を大きく下回りました(平均${avgReps.toFixed(1)}回)。重量を少し落として${Math.max(0, last.maxWeight - WEIGHT_STEP)}kgでフォーム重視にしましょう。`,
+      message: `Reps fell well short of the target last time (avg ${avgReps.toFixed(1)}). Drop to ${Math.max(0, last.maxWeight - WEIGHT_STEP)}kg and focus on form.`,
     }
   }
 
@@ -79,7 +79,7 @@ export function suggestNextTarget(
     exerciseId: exercise.id,
     level: 'hold',
     suggestedWeight: last.maxWeight,
-    message: `前回と同じ${last.maxWeight}kgのまま、目標${targetReps}回の達成を目指しましょう。`,
+    message: `Stay at ${last.maxWeight}kg and aim to hit the ${targetReps}-rep target.`,
   }
 }
 
@@ -135,7 +135,7 @@ export interface GapAnalysis {
   stagnantExercises: string[]
 }
 
-const ALL_MUSCLE_GROUPS: MuscleGroup[] = ['胸', '背中', '肩', '脚', '腕', '腹筋']
+const ALL_MUSCLE_GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms', 'Core']
 
 export function analyzeGaps(
   sessions: WorkoutSession[],
@@ -159,7 +159,7 @@ export function analyzeGaps(
     const history = getExerciseHistory(sessions, exerciseId)
     const lastDate = history.length > 0 ? history[history.length - 1].date : null
     const daysSinceLast = lastDate ? daysBetween(lastDate, today) : null
-    return { exerciseId, exerciseName: exercise?.name ?? '不明な種目', daysSinceLast }
+    return { exerciseId, exerciseName: exercise?.name ?? 'Unknown Exercise', daysSinceLast }
   }).filter((e) => e.daysSinceLast === null || e.daysSinceLast > windowDays)
 
   const stagnantExercises = exercises

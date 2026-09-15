@@ -19,6 +19,7 @@ import {
   suggestSubstitution,
 } from '../lib/insights'
 import { todayISO } from '../lib/date'
+import { MUSCLE_COLORS } from '../lib/muscleColors'
 import { Screen } from './Layout'
 import { Card, SectionHeading } from './ui/Card'
 import { GroupedList, Row } from './ui/List'
@@ -26,17 +27,7 @@ import { Button } from './ui/Button'
 import { FlagDot, Flame, Trophy, TrendingUp } from './ui/icons'
 import type { MuscleGroup } from '../types'
 
-const MUSCLE_COLORS: Record<MuscleGroup, string> = {
-  胸: '#3d78ab',
-  背中: '#5b8c5a',
-  肩: '#b98a3d',
-  脚: '#a1533f',
-  腕: '#7a5ba6',
-  腹筋: '#4fa39a',
-  その他: '#8a8d90',
-}
-
-const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土']
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 type Insight = { key: string; tone: 'critical' | 'warning' | 'good' | 'info'; text: string }
 
@@ -52,15 +43,15 @@ function buildInsights({ gaps, dropoffs, lifetimeNeglected, stagnationDiagnoses,
   phase: ReturnType<typeof suggestPhaseShift>
 }): Insight[] {
   const insights: Insight[] = []
-  if (gaps.neglectedMuscleGroups.length > 0) insights.push({ key: 'muscle', tone: 'critical', text: `直近7日間、${gaps.neglectedMuscleGroups.join('・')}を鍛えていません` })
-  dropoffs.forEach((dropoff) => insights.push({ key: `dropoff-${dropoff.menuId}-${dropoff.weekday}`, tone: 'critical', text: `「${dropoff.menuName}」の${WEEKDAYS_JA[dropoff.weekday]}曜日、直近${dropoff.scheduledCount}回連続で未実施です` }))
-  if (lifetimeNeglected.length > 0) insights.push({ key: 'lifetime', tone: 'critical', text: `記録開始から一度も${lifetimeNeglected.join('・')}を鍛えていません` })
-  gaps.neglectedMenuExercises.forEach((exercise) => insights.push({ key: `menu-${exercise.exerciseId}`, tone: 'warning', text: `${exercise.exerciseName}をメニューに設定していますが、${exercise.daysSinceLast === null ? 'まだ記録がありません' : `${exercise.daysSinceLast}日間やっていません`}` }))
+  if (gaps.neglectedMuscleGroups.length > 0) insights.push({ key: 'muscle', tone: 'critical', text: `Haven't trained ${gaps.neglectedMuscleGroups.join(', ')} in the last 7 days` })
+  dropoffs.forEach((dropoff) => insights.push({ key: `dropoff-${dropoff.menuId}-${dropoff.weekday}`, tone: 'critical', text: `"${dropoff.menuName}" hasn't been logged on ${WEEKDAYS_EN[dropoff.weekday]} for ${dropoff.scheduledCount} scheduled sessions in a row` }))
+  if (lifetimeNeglected.length > 0) insights.push({ key: 'lifetime', tone: 'critical', text: `Never trained ${lifetimeNeglected.join(', ')} since you started logging` })
+  gaps.neglectedMenuExercises.forEach((exercise) => insights.push({ key: `menu-${exercise.exerciseId}`, tone: 'warning', text: `${exercise.exerciseName} is in your menu, but ${exercise.daysSinceLast === null ? "hasn't been logged yet" : `hasn't been done in ${exercise.daysSinceLast} days`}` }))
   stagnationDiagnoses.forEach((diagnosis) => insights.push({ key: `stag-${diagnosis.exerciseId}`, tone: 'warning', text: diagnosis.message }))
   plateauCandidates.forEach((candidate) => insights.push({ key: `plateau-${candidate.exerciseId}`, tone: 'warning', text: candidate.message }))
-  if (substitution) insights.push({ key: 'substitution', tone: 'warning', text: `${substitution.exerciseName}が${substitution.weeksStreak}週連続です。${substitution.substituteName}に変えてみては?` })
-  if (skew.isSkewed) insights.push({ key: 'skew', tone: 'warning', text: `直近4週間、${skew.topWeekdays.map((weekday) => WEEKDAYS_JA[weekday]).join('・')}曜日にボリュームの${Math.round(skew.sharePct)}%が集中しています` })
-  if (correlation) insights.push({ key: 'correlation', tone: 'info', text: `${correlation.nameA}と${correlation.nameB}の重量は連動して伸びる傾向があります(相関 ${correlation.correlation.toFixed(2)})` })
+  if (substitution) insights.push({ key: 'substitution', tone: 'warning', text: `${substitution.exerciseName} has been done ${substitution.weeksStreak} weeks in a row. Try swapping in ${substitution.substituteName}?` })
+  if (skew.isSkewed) insights.push({ key: 'skew', tone: 'warning', text: `${Math.round(skew.sharePct)}% of your volume over the last 4 weeks is concentrated on ${skew.topWeekdays.map((weekday) => WEEKDAYS_EN[weekday]).join(', ')}` })
+  if (correlation) insights.push({ key: 'correlation', tone: 'info', text: `${correlation.nameA} and ${correlation.nameB} weights tend to move together (correlation ${correlation.correlation.toFixed(2)})` })
   if (phase.suggestSwitch) insights.push({ key: 'phase', tone: 'info', text: phase.message })
   return insights
 }

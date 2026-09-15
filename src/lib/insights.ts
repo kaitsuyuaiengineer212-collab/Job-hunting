@@ -54,27 +54,27 @@ export interface PlateauForecast {
 export function forecastPlateau(sessions: WorkoutSession[], exercise: Exercise): PlateauForecast {
   const history = getExerciseHistory(sessions, exercise.id).slice(-5)
   if (history.length < 4) {
-    return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: 'データが不足しています' }
+    return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: 'Not enough data yet' }
   }
   const deltas = history.slice(1).map((h, i) => h.maxWeight - history[i].maxWeight)
   const slope = linearRegression(deltas.map((d, i) => ({ x: i, y: d })))
   const lastDelta = deltas[deltas.length - 1]
 
   if (lastDelta <= 0) {
-    return { exerciseId: exercise.id, sessionsUntilPlateau: 0, message: `${exercise.name}: 直近のセッションで伸びが止まっています` }
+    return { exerciseId: exercise.id, sessionsUntilPlateau: 0, message: `${exercise.name}: progress has stalled in the most recent session` }
   }
   if (slope >= 0) {
-    return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: `${exercise.name}は順調に伸びています` }
+    return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: `${exercise.name} is progressing steadily` }
   }
   const sessionsUntilZero = Math.ceil(lastDelta / -slope)
   if (sessionsUntilZero <= 5) {
     return {
       exerciseId: exercise.id,
       sessionsUntilPlateau: sessionsUntilZero,
-      message: `${exercise.name}: このペースだとあと約${sessionsUntilZero}回のセッションで伸びが頭打ちになりそうです`,
+      message: `${exercise.name}: at this rate you'll likely plateau in about ${sessionsUntilZero} more sessions`,
     }
   }
-  return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: `${exercise.name}は順調に伸びています` }
+  return { exerciseId: exercise.id, sessionsUntilPlateau: null, message: `${exercise.name} is progressing steadily` }
 }
 
 // 2. Stagnation root-cause diagnosis
@@ -102,7 +102,7 @@ export function diagnoseStagnation(sessions: WorkoutSession[], exercise: Exercis
 
   const prior = history.slice(-lookback * 2, -lookback)
   if (prior.length < 2) {
-    return { exerciseId: exercise.id, cause: 'unknown', message: `${exercise.name}の重量が${lookback}回連続で停滞しています` }
+    return { exerciseId: exercise.id, cause: 'unknown', message: `${exercise.name} has been stuck at the same weight for ${lookback} sessions in a row` }
   }
 
   const recentVolume = average(recent.map((h) => h.totalVolume))
@@ -116,24 +116,24 @@ export function diagnoseStagnation(sessions: WorkoutSession[], exercise: Exercis
     return {
       exerciseId: exercise.id,
       cause: 'volume',
-      message: `${exercise.name}: ボリュームが以前より${Math.round((1 - recentVolume / priorVolume) * 100)}%減っています。セット数を増やしてみましょう`,
+      message: `${exercise.name}: volume is down ${Math.round((1 - recentVolume / priorVolume) * 100)}% from before — try adding a set`,
     }
   }
   if (priorReps > 0 && recentReps < priorReps * 0.85) {
     return {
       exerciseId: exercise.id,
       cause: 'reps',
-      message: `${exercise.name}: レップ数が落ちてきています。重量を少し下げてフォームを立て直しましょう`,
+      message: `${exercise.name}: reps are dropping off — lower the weight a bit and rebuild your form`,
     }
   }
   if (recentGap != null && priorGap != null && recentGap > priorGap * 1.3) {
     return {
       exerciseId: exercise.id,
       cause: 'frequency',
-      message: `${exercise.name}: 頻度が下がっています(平均${recentGap.toFixed(1)}日間隔)。もう少し頻度を上げてみましょう`,
+      message: `${exercise.name}: frequency has dropped (avg ${recentGap.toFixed(1)} days between sessions) — try training it more often`,
     }
   }
-  return { exerciseId: exercise.id, cause: 'unknown', message: `${exercise.name}の重量が${lookback}回連続で停滞しています。デロードを検討しましょう` }
+  return { exerciseId: exercise.id, cause: 'unknown', message: `${exercise.name} has been stuck at the same weight for ${lookback} sessions — consider a deload` }
 }
 
 // 3. Goal ETA projection
@@ -150,17 +150,17 @@ export function projectGoalETA(sessions: WorkoutSession[], exerciseId: string, e
   const history = getExerciseHistory(sessions, exerciseId)
   const current = history.length > 0 ? history[history.length - 1].maxWeight : 0
   if (history.length < 2) {
-    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg: null, weeksToGoal: null, message: 'データが不足しています' }
+    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg: null, weeksToGoal: null, message: 'Not enough data yet' }
   }
   if (current >= goalWeight) {
-    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg: null, weeksToGoal: 0, message: `既に目標の${goalWeight}kgを達成しています` }
+    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg: null, weeksToGoal: 0, message: `Already hit the ${goalWeight}kg goal` }
   }
   const first = history[0]
   const points = history.map((h) => ({ x: daysBetween(first.date, h.date), y: h.maxWeight }))
   const slopePerDay = linearRegression(points)
   const weeklyRateKg = slopePerDay * 7
   if (weeklyRateKg <= 0.01) {
-    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg, weeksToGoal: null, message: '現在のペースでは目標到達の見込みが立ちません' }
+    return { exerciseId, goalWeight, currentWeight: current, weeklyRateKg, weeksToGoal: null, message: 'At the current pace, this goal is not projected to be reached' }
   }
   const weeksToGoal = Math.ceil((goalWeight - current) / weeklyRateKg)
   return {
@@ -169,7 +169,7 @@ export function projectGoalETA(sessions: WorkoutSession[], exerciseId: string, e
     currentWeight: current,
     weeklyRateKg,
     weeksToGoal,
-    message: `${exerciseName}: 今のペース(週+${weeklyRateKg.toFixed(1)}kg)なら約${weeksToGoal}週間で${goalWeight}kgに到達見込みです`,
+    message: `${exerciseName}: at the current pace (+${weeklyRateKg.toFixed(1)}kg/week) you'll likely hit ${goalWeight}kg in about ${weeksToGoal} weeks`,
   }
 }
 
@@ -203,18 +203,18 @@ export function rankLeverage(sessions: WorkoutSession[], exercises: Exercise[], 
     const reasons: string[] = []
     if (gaps.neglectedMuscleGroups.includes(ex.muscleGroup)) {
       score += 3
-      reasons.push('鍛えていない部位')
+      reasons.push('Neglected muscle group')
     }
     if (gaps.stagnantExercises.includes(ex.id)) {
       score += 2
-      reasons.push('停滞中')
+      reasons.push('Stagnant')
     }
     const t = trendById.get(ex.id)
     if (t && t.changePct < 0) {
       score += 1
-      reasons.push('直近で後退')
+      reasons.push('Recent decline')
     }
-    if (score > 0) results.push({ exerciseId: ex.id, name: ex.name, score, reason: reasons.join('・') })
+    if (score > 0) results.push({ exerciseId: ex.id, name: ex.name, score, reason: reasons.join(' · ') })
   }
   return results.sort((a, b) => b.score - a.score)
 }
@@ -227,8 +227,8 @@ export interface RestReadiness {
   ready: boolean
 }
 
-const RECOVERY_DAYS: Record<MuscleGroup, number> = { 胸: 2, 背中: 2, 肩: 2, 脚: 3, 腕: 1, 腹筋: 1, その他: 1 }
-const TRACKED_GROUPS: MuscleGroup[] = ['胸', '背中', '肩', '脚', '腕', '腹筋']
+const RECOVERY_DAYS: Record<MuscleGroup, number> = { Chest: 2, Back: 2, Shoulders: 2, Legs: 3, Arms: 1, Core: 1, Other: 1 }
+const TRACKED_GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms', 'Core']
 
 export function getRestReadiness(sessions: WorkoutSession[], exercises: Exercise[], today: string): RestReadiness[] {
   const exerciseById = new Map(exercises.map((e) => [e.id, e]))
@@ -259,21 +259,21 @@ export function suggestPhaseShift(sessions: WorkoutSession[], today: string): Ph
   const since = shiftDate(today, -28)
   const recentSessions = sessions.filter((s) => s.date >= since)
   const allReps = recentSessions.flatMap((s) => s.exerciseLogs.flatMap((l) => l.sets.map((set) => set.reps)))
-  if (allReps.length < 10) return { phase: 'unknown', weeksInPhase: 0, suggestSwitch: false, message: 'データが不足しています' }
+  if (allReps.length < 10) return { phase: 'unknown', weeksInPhase: 0, suggestSwitch: false, message: 'Not enough data yet' }
 
   const avgReps = average(allReps)
   const phase = avgReps <= 6 ? 'strength' : avgReps <= 12 ? 'hypertrophy' : 'endurance'
   const earliest = recentSessions.reduce((min, s) => (s.date < min ? s.date : min), today)
   const weeksInPhase = Math.max(1, Math.round(daysBetween(earliest, today) / 7))
   const suggestSwitch = weeksInPhase >= 4
-  const phaseLabel = phase === 'strength' ? '筋力(低レップ)' : phase === 'hypertrophy' ? '筋肥大(中レップ)' : '持久力(高レップ)'
+  const phaseLabel = phase === 'strength' ? 'strength (low reps)' : phase === 'hypertrophy' ? 'hypertrophy (mid reps)' : 'endurance (high reps)'
   return {
     phase,
     weeksInPhase,
     suggestSwitch,
     message: suggestSwitch
-      ? `ここ${weeksInPhase}週間ほど${phaseLabel}フェーズが続いています。そろそろレンジを変えてみましょう`
-      : `直近は${phaseLabel}フェーズの傾向です`,
+      ? `You've been in a ${phaseLabel} phase for about ${weeksInPhase} weeks. Consider switching up your rep range`
+      : `Recent training trends toward a ${phaseLabel} phase`,
   }
 }
 
@@ -291,14 +291,14 @@ export function generateWeeklyNarrative(sessions: WorkoutSession[], exercises: E
   const parts: string[] = []
   if (lastWeekVolume > 0) {
     const pct = Math.round(((thisWeek.volume - lastWeekVolume) / lastWeekVolume) * 100)
-    parts.push(`今週のボリュームは先週比${pct >= 0 ? '+' : ''}${pct}%`)
+    parts.push(`This week's volume is ${pct >= 0 ? '+' : ''}${pct}% vs last week`)
   } else if (thisWeek.volume > 0) {
-    parts.push(`今週のボリュームは${Math.round(thisWeek.volume).toLocaleString()}kg`)
+    parts.push(`This week's volume is ${Math.round(thisWeek.volume).toLocaleString()}kg`)
   }
-  if (best && best.changePct > 0) parts.push(`${best.name}の伸びが顕著`)
-  if (worst && worst.changePct < 0 && worst.exerciseId !== best?.exerciseId) parts.push(`${worst.name}はやや後退`)
-  if (parts.length === 0) return '今週はまだ記録がありません。'
-  return parts.join('、') + '。'
+  if (best && best.changePct > 0) parts.push(`${best.name} is up sharply`)
+  if (worst && worst.changePct < 0 && worst.exerciseId !== best?.exerciseId) parts.push(`${worst.name} is down slightly`)
+  if (parts.length === 0) return 'No sessions logged yet this week.'
+  return parts.join(', ') + '.'
 }
 
 // 9 & 14. Exercise monotony + substitution suggestion
@@ -364,7 +364,7 @@ export function analyzeRepDecay(sessions: WorkoutSession[], exercise: Exercise):
     decayPct,
     firstReps,
     lastReps,
-    message: `前回のセッションでレップ数が${Math.round(decayPct)}%低下しました(${firstReps}回→${lastReps}回)。休憩を延ばすか重量を見直しましょう`,
+    message: `Reps dropped ${Math.round(decayPct)}% within the last session (${firstReps} → ${lastReps}). Try longer rests or a lighter weight`,
   }
 }
 

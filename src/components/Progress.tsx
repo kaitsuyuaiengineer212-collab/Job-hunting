@@ -6,6 +6,7 @@ import { getExerciseHistory, suggestNextTarget } from '../lib/analysis'
 import { analyzeRepDecay, forecastPlateau, getStrengthStandard, projectGoalETA } from '../lib/insights'
 import { getForecast, getRegression, type ForecastResult, type RegressionResult } from '../lib/statsApi'
 import { formatDateJP } from '../lib/date'
+import { MUSCLE_COLORS } from '../lib/muscleColors'
 import { Screen } from './Layout'
 import { SectionHeading } from './ui/Card'
 import { Chip } from './ui/Chip'
@@ -91,7 +92,7 @@ export function ProgressScreen() {
   if (exercisesWithData.length === 0) {
     return (
       <Screen title="Progress">
-        <p className="text-subhead label-secondary">記録がある種目がまだありません。まずは「記録」タブから記録しましょう。</p>
+        <p className="text-subhead label-secondary">No exercises logged yet. Head to the Record tab to log your first workout.</p>
       </Screen>
     )
   }
@@ -101,7 +102,7 @@ export function ProgressScreen() {
       <section>
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
           {exercisesWithData.map((e) => (
-            <Chip key={e.id} active={e.id === exerciseId} onClick={() => setExerciseId(e.id)}>
+            <Chip key={e.id} active={e.id === exerciseId} tone={MUSCLE_COLORS[e.muscleGroup]} onClick={() => setExerciseId(e.id)}>
               {e.name}
             </Chip>
           ))}

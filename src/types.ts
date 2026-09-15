@@ -1,6 +1,6 @@
-export type MuscleGroup = '胸' | '背中' | '肩' | '脚' | '腕' | '腹筋' | 'その他'
+export type MuscleGroup = 'Chest' | 'Back' | 'Shoulders' | 'Legs' | 'Arms' | 'Core' | 'Other'
 
-export const MUSCLE_GROUPS = ['胸', '背中', '肩', '脚', '腕', '腹筋', 'その他'] as const satisfies readonly MuscleGroup[]
+export const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms', 'Core', 'Other'] as const satisfies readonly MuscleGroup[]
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 export interface Exercise {
@@ -33,12 +33,12 @@ export interface MenuExercise {
   targetReps: number
 }
 
-export const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const
+export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 export interface MenuTemplate {
   id: string
   name: string
-  weekdays: number[] // 0=日 ... 6=土
+  weekdays: number[] // 0=Sun ... 6=Sat
   exercises: MenuExercise[]
 }
 

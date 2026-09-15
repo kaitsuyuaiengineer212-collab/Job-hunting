@@ -12,6 +12,7 @@ import { Stepper } from './ui/Stepper'
 import { Calendar } from './ui/Calendar'
 import { Plus, X } from './ui/icons'
 import { format, parseISO } from 'date-fns'
+import { MUSCLE_COLORS } from '../lib/muscleColors'
 import { MUSCLE_GROUPS, type Exercise, type ExerciseLog, type MuscleGroup, type SetEntry, type WorkoutSession } from '../types'
 
 export function RecordWorkout() {
@@ -22,7 +23,7 @@ export function RecordWorkout() {
   const [pickerExerciseId, setPickerExerciseId] = useState(exercises[0]?.id ?? '')
   const [showNewExercise, setShowNewExercise] = useState(false)
   const [newExerciseName, setNewExerciseName] = useState('')
-  const [newExerciseGroup, setNewExerciseGroup] = useState<MuscleGroup>('その他')
+  const [newExerciseGroup, setNewExerciseGroup] = useState<MuscleGroup>('Other')
   const [savedMessage, setSavedMessage] = useState('')
 
   const exerciseById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises])
@@ -130,7 +131,12 @@ export function RecordWorkout() {
           <SectionHeading>Today's Menu</SectionHeading>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
             {todaysMenuExercises.map(({ exerciseId, targetReps }) => (
-              <Chip key={exerciseId} active={logs.some((l) => l.exerciseId === exerciseId)} onClick={() => addExercise(exerciseId, targetReps)}>
+              <Chip
+                key={exerciseId}
+                active={logs.some((l) => l.exerciseId === exerciseId)}
+                tone={exerciseById.get(exerciseId) && MUSCLE_COLORS[exerciseById.get(exerciseId)!.muscleGroup]}
+                onClick={() => addExercise(exerciseId, targetReps)}
+              >
                 {exerciseById.get(exerciseId)?.name}
               </Chip>
             ))}
@@ -143,7 +149,12 @@ export function RecordWorkout() {
           <SectionHeading>Recent</SectionHeading>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
             {recentExerciseIds.map((id) => (
-              <Chip key={id} active={logs.some((l) => l.exerciseId === id)} onClick={() => addExercise(id)}>
+              <Chip
+                key={id}
+                active={logs.some((l) => l.exerciseId === id)}
+                tone={exerciseById.get(id) && MUSCLE_COLORS[exerciseById.get(id)!.muscleGroup]}
+                onClick={() => addExercise(id)}
+              >
                 {exerciseById.get(id)?.name}
               </Chip>
             ))}
@@ -245,7 +256,7 @@ function RecordedSessionCard({ session, exerciseById }: { session: WorkoutSessio
           style={index > 0 ? { paddingTop: 12, borderTop: '1px solid var(--separator)' } : undefined}
         >
           <span className="text-subhead label" style={{ fontWeight: 600 }}>
-            {exerciseById.get(log.exerciseId)?.name ?? '不明な種目'}
+            {exerciseById.get(log.exerciseId)?.name ?? 'Unknown Exercise'}
           </span>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {log.sets.map((set, setIndex) => (
@@ -289,7 +300,7 @@ function WorkoutExerciseCard({ log, exercise, sessions, onRemove, onUpdateSet, o
           <div key={index} className="flex items-center gap-3">
             <span className="text-footnote label-tertiary w-6">{index + 1}</span>
             <Stepper label="Weight" value={set.weight} onChange={(value) => onUpdateSet(index, 'weight', value)} step={2.5} decimals={1} unit="kg" />
-            <Stepper label="Reps" value={set.reps} onChange={(value) => onUpdateSet(index, 'reps', value)} step={1} min={1} unit="回" />
+            <Stepper label="Reps" value={set.reps} onChange={(value) => onUpdateSet(index, 'reps', value)} step={1} min={1} unit="reps" />
             <button aria-label={`Remove set ${index + 1}`} onClick={() => onRemoveSet(index)} className="ml-auto flex items-center justify-center active:opacity-50" style={{ width: 32, height: 32, color: 'var(--label-tertiary)' }}>
               <X size={16} />
             </button>
