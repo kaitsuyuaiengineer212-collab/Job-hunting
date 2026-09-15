@@ -2,8 +2,114 @@
 
 :root {
   color-scheme: light dark;
+
+  /* Neutrals — iOS system background / label hierarchy (opacity-based) */
+  --bg: #f2f2f7;
+  --bg-elevated: #ffffff;
+  --bg-grouped: #ffffff;
+  --separator: rgba(60, 60, 67, 0.29);
+  --label: rgba(0, 0, 0, 0.92);
+  --label-secondary: rgba(60, 60, 67, 0.6);
+  --label-tertiary: rgba(60, 60, 67, 0.32);
+  --fill-secondary: rgba(120, 120, 128, 0.12);
+
+  /* Brand accent — "iron blue" */
+  --accent: #2c5079;
+  --accent-strong: #1d3a58;
+  --accent-soft: #e5edf4;
+  --accent-on: #ffffff;
+
+  /* Semantic (independent of accent) */
+  --good: #1f8a4c;
+  --good-soft: #e4f5ea;
+  --warning: #a06a00;
+  --warning-soft: #fbefd9;
+  --critical: #d7362a;
+  --critical-soft: #fce6e3;
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.03), 0 6px 16px -10px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --bg-elevated: #1c1c1e;
+    --bg-grouped: #1c1c1e;
+    --separator: rgba(84, 84, 88, 0.6);
+    --label: rgba(255, 255, 255, 0.92);
+    --label-secondary: rgba(235, 235, 245, 0.6);
+    --label-tertiary: rgba(235, 235, 245, 0.3);
+    --fill-secondary: rgba(120, 120, 128, 0.24);
+
+    --accent: #7fb0e0;
+    --accent-strong: #a9cdef;
+    --accent-soft: #1c2c3c;
+    --accent-on: #06131f;
+
+    --good: #3ed07d;
+    --good-soft: #12281a;
+    --warning: #e7b03e;
+    --warning-soft: #2e2410;
+    --critical: #ff6b60;
+    --critical-soft: #351613;
+
+    --glass-bg: rgba(28, 28, 30, 0.72);
+    --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4), 0 10px 22px -12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --bg-elevated: #1c1c1e;
+  --bg-grouped: #1c1c1e;
+  --separator: rgba(84, 84, 88, 0.6);
+  --label: rgba(255, 255, 255, 0.92);
+  --label-secondary: rgba(235, 235, 245, 0.6);
+  --label-tertiary: rgba(235, 235, 245, 0.3);
+  --fill-secondary: rgba(120, 120, 128, 0.24);
+
+  --accent: #7fb0e0;
+  --accent-strong: #a9cdef;
+  --accent-soft: #1c2c3c;
+  --accent-on: #06131f;
+
+  --good: #3ed07d;
+  --good-soft: #12281a;
+  --warning: #e7b03e;
+  --warning-soft: #2e2410;
+  --critical: #ff6b60;
+  --critical-soft: #351613;
+
+  --glass-bg: rgba(28, 28, 30, 0.72);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4), 0 10px 22px -12px rgba(0, 0, 0, 0.6);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  background: var(--bg);
+  color: var(--label);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
+
+button, input, select {
+  font-family: inherit;
+}
+
+/* ---- Apple HIG type scale ---- */
+.text-large-title { font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.text-title1 { font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.01em; }
+.text-title2 { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.01em; }
+.text-title3 { font-size: 20px; line-height: 25px; font-weight: 600; }
+.text-headline { font-size: 17px; line-height: 22px; font-weight: 600; }
+.text-body { font-size: 17px; line-height: 22px; font-weight: 400; }
+.text-callout { font-size: 16px; line-height: 21px; font-weight: 400; }
+.text-subhead { font-size: 15px; line-height: 20px; font-weight: 400; }
+.text-footnote { font-size: 13px; line-height: 18px; font-weight: 400; }
+.text-caption1 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.text-caption2 { font-size: 11px; line-height: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.label { color: var(--label); }
+.label-secondary { color: var(--label-secondary); }
+.label-tertiary { color: var(--label-tertiary); }

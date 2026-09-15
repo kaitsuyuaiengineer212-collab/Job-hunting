@@ -1,22 +1,20 @@
 import { useState } from 'react'
 import { AppStoreProvider } from './store'
 import { Layout, type TabKey } from './components/Layout'
+import { Today } from './components/Today'
 import { RecordWorkout } from './components/RecordWorkout'
-import { History } from './components/History'
-import { ProgressCharts } from './components/ProgressCharts'
+import { ProgressScreen } from './components/Progress'
 import { MenuManager } from './components/MenuManager'
-import { Dashboard } from './components/Dashboard'
 
 function App() {
-  const [tab, setTab] = useState<TabKey>('dashboard')
+  const [tab, setTab] = useState<TabKey>('today')
 
   return (
     <AppStoreProvider>
       <Layout active={tab} onChange={setTab}>
-        {tab === 'dashboard' && <Dashboard />}
+        {tab === 'today' && <Today onGoToRecord={() => setTab('record')} />}
         {tab === 'record' && <RecordWorkout />}
-        {tab === 'history' && <History />}
-        {tab === 'charts' && <ProgressCharts />}
+        {tab === 'progress' && <ProgressScreen />}
         {tab === 'menu' && <MenuManager />}
       </Layout>
     </AppStoreProvider>

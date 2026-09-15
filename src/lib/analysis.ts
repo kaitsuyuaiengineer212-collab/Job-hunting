@@ -162,13 +162,78 @@ export function analyzeGaps(
   return { neglectedMuscleGroups, neglectedMenuExercises, stagnantExercises }
 }
 
-function shiftDate(date: string, days: number): string {
+export interface ExerciseTrend {
+  exerciseId: string
+  name: string
+  muscleGroup: MuscleGroup
+  latest: number
+  previous: number
+  changePct: number
+}
+
+export function getExerciseTrends(sessions: WorkoutSession[], exercises: Exercise[]): ExerciseTrend[] {
+  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+  const trends: ExerciseTrend[] = []
+  for (const exercise of exercises) {
+    const history = getExerciseHistory(sessions, exercise.id)
+    if (history.length < 2) continue
+    const latest = history[history.length - 1]
+    const previous = history[history.length - 2]
+    if (previous.maxWeight === 0) continue
+    const changePct = ((latest.maxWeight - previous.maxWeight) / previous.maxWeight) * 100
+    trends.push({
+      exerciseId: exercise.id,
+      name: exerciseById.get(exercise.id)?.name ?? exercise.id,
+      muscleGroup: exercise.muscleGroup,
+      latest: latest.maxWeight,
+      previous: previous.maxWeight,
+      changePct,
+    })
+  }
+  return trends.sort((a, b) => b.changePct - a.changePct)
+}
+
+export interface WeeklyStats {
+  volume: number
+  sessionCount: number
+  streakDays: number
+}
+
+export function getWeeklyStats(sessions: WorkoutSession[], today: string, windowDays = 7): WeeklyStats {
+  const since = shiftDate(today, -windowDays)
+  const inWindow = sessions.filter((s) => s.date >= since && s.date <= today)
+  const volume = inWindow.reduce(
+    (sum, s) => sum + s.exerciseLogs.reduce((eSum, l) => eSum + l.sets.reduce((sSum, set) => sSum + set.weight * set.reps, 0), 0),
+    0,
+  )
+  const trainedDates = new Set(sessions.map((s) => s.date))
+  let streakDays = 0
+  let cursor = today
+  while (trainedDates.has(cursor)) {
+    streakDays += 1
+    cursor = shiftDate(cursor, -1)
+  }
+  return { volume, sessionCount: inWindow.length, streakDays }
+}
+
+export function getRecentExerciseIds(sessions: WorkoutSession[], limit = 8): string[] {
+  const seen = new Map<string, string>()
+  const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date))
+  for (const session of sorted) {
+    for (const log of session.exerciseLogs) {
+      if (!seen.has(log.exerciseId)) seen.set(log.exerciseId, session.date)
+    }
+  }
+  return Array.from(seen.keys()).slice(0, limit)
+}
+
+export function shiftDate(date: string, days: number): string {
   const d = new Date(date)
   d.setDate(d.getDate() + days)
   return d.toISOString().slice(0, 10)
 }
 
-function daysBetween(from: string, to: string): number {
+export function daysBetween(from: string, to: string): number {
   const ms = new Date(to).getTime() - new Date(from).getTime()
   return Math.round(ms / (1000 * 60 * 60 * 24))
 }

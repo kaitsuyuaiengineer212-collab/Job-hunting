@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "apple-ui-designer": {
+      "source": "heyman333/atelier-ui",
+      "sourceType": "github",
+      "skillPath": "skills/apple-ui-designer/SKILL.md",
+      "computedHash": "26d43c0a38e7a0ad8cf2cd5418d48ca7525873cc60f203ac67fcf024ce577eb3"
+    },
+    "ios-liquid-glass": {
+      "source": "vabole/apple-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ios-liquid-glass/SKILL.md",
+      "computedHash": "bdce18c48c553dbb9eef850fa24c2814ba243498d7c157abeaf68ddb3fbaaa1e"
+    },
+    "mobile-ios-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/mobile-ios-design/SKILL.md",
+      "computedHash": "3902f919488d8ddc983e157bbcd5f16b739b84eeaab57002bf52b7f9601ed6ad"
+    }
+  }
+}

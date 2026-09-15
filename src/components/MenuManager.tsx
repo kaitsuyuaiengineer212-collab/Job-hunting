@@ -1,14 +1,27 @@
 import { useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useAppStore } from '../store'
-import { WEEKDAY_LABELS, type MenuExercise, type MenuTemplate } from '../types'
+import type { MenuExercise, MenuTemplate } from '../types'
+import { Screen } from './Layout'
+import { SectionHeading } from './ui/Card'
+import { GroupedList, Row } from './ui/List'
+import { Chip } from './ui/Chip'
+import { Button } from './ui/Button'
+import { Stepper } from './ui/Stepper'
+import { Plus, X, ClipboardList } from './ui/icons'
+
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export function MenuManager() {
   const { menus, setMenus, exercises } = useAppStore()
+  const [showForm, setShowForm] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [draftExercises, setDraftExercises] = useState<MenuExercise[]>([])
   const [pickerExerciseId, setPickerExerciseId] = useState(exercises[0]?.id ?? '')
+
+  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
 
   function toggleWeekday(day: number) {
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
@@ -34,117 +47,128 @@ export function MenuManager() {
     setName('')
     setWeekdays([])
     setDraftExercises([])
+    setShowForm(false)
   }
 
   function deleteMenu(id: string) {
     setMenus((prev) => prev.filter((m) => m.id !== id))
+    if (expandedId === id) setExpandedId(null)
   }
 
-  const exerciseById = new Map(exercises.map((e) => [e.id, e]))
-
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <h2 className="text-xl font-bold">トレーニングメニュー管理</h2>
-
-      <div className="border rounded-lg p-3 space-y-3 border-slate-200 dark:border-slate-800">
-        <h3 className="font-semibold">新しいメニューを作成</h3>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="メニュー名(例: プッシュデイ)"
-          className="w-full border rounded-md px-2 py-1 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-        />
-        <div className="flex flex-wrap gap-2">
-          {WEEKDAY_LABELS.map((label, i) => (
-            <button
-              key={label}
-              onClick={() => toggleWeekday(i)}
-              className={`px-2 py-1 rounded-md text-sm border ${
-                weekdays.includes(i)
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'border-slate-300 dark:border-slate-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={pickerExerciseId}
-            onChange={(e) => setPickerExerciseId(e.target.value)}
-            className="border rounded-md px-2 py-1 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-          >
-            {exercises.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <button onClick={addExerciseToDraft} className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm">
-            追加
-          </button>
-        </div>
-
-        <ul className="space-y-2">
-          {draftExercises.map((de) => (
-            <li key={de.exerciseId} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">{exerciseById.get(de.exerciseId)?.name}</span>
-              <input
-                type="number"
-                value={de.targetSets}
-                onChange={(e) => updateDraftExercise(de.exerciseId, 'targetSets', Number(e.target.value))}
-                className="w-14 border rounded-md px-1 py-0.5 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-              />
-              <span>セット ×</span>
-              <input
-                type="number"
-                value={de.targetReps}
-                onChange={(e) => updateDraftExercise(de.exerciseId, 'targetReps', Number(e.target.value))}
-                className="w-14 border rounded-md px-1 py-0.5 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
-              />
-              <span>回</span>
-              <button onClick={() => removeDraftExercise(de.exerciseId)} className="text-red-600">
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <button onClick={saveMenu} className="px-4 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
-          メニューを保存
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="font-semibold">登録済みメニュー</h3>
-        {menus.length === 0 && <p className="text-sm text-slate-500">まだメニューがありません。</p>}
-        {menus.map((menu) => (
-          <div key={menu.id} className="border rounded-lg p-3 border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold">
-                {menu.name}
-                {menu.weekdays.length > 0 && (
-                  <span className="ml-2 text-xs text-slate-500">
-                    ({menu.weekdays.map((d) => WEEKDAY_LABELS[d]).join('・')})
-                  </span>
+    <Screen title="Menu">
+      <section>
+        {menus.length === 0 && !showForm && (
+          <p className="text-subhead label-secondary mb-4">Create a weekly menu to add exercises with one tap on the Record screen.</p>
+        )}
+        {menus.length > 0 && (
+          <GroupedList>
+            {menus.map((menu, idx) => (
+              <div key={menu.id}>
+                <Row
+                  icon={<ClipboardList size={16} />}
+                  title={menu.name}
+                  subtitle={menu.weekdays.length > 0 ? menu.weekdays.map((d) => WEEKDAYS_EN[d]).join(', ') : 'No days set'}
+                  trailing={`${menu.exercises.length}`}
+                  chevron
+                  onClick={() => setExpandedId((prev) => (prev === menu.id ? null : menu.id))}
+                  last={idx === menus.length - 1 && expandedId !== menu.id}
+                />
+                {expandedId === menu.id && (
+                  <div className="px-4 pb-4" style={{ borderBottom: idx === menus.length - 1 ? 'none' : '1px solid var(--separator)' }}>
+                    <div className="flex flex-col gap-1.5 mb-3">
+                      {menu.exercises.map((me) => (
+                        <div key={me.exerciseId} className="flex items-center justify-between text-subhead label-secondary">
+                          <span>{exerciseById.get(me.exerciseId)?.name}</span>
+                          <span className="tabular-nums">
+                            {me.targetSets} × {me.targetReps}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button variant="destructive" onClick={() => deleteMenu(menu.id)}>
+                      Delete Menu
+                    </Button>
+                  </div>
                 )}
-              </span>
-              <button onClick={() => deleteMenu(menu.id)} className="text-sm text-red-600 hover:underline">
-                削除
-              </button>
-            </div>
-            <ul className="text-sm text-slate-600 dark:text-slate-400">
-              {menu.exercises.map((me) => (
-                <li key={me.exerciseId}>
-                  {exerciseById.get(me.exerciseId)?.name}: {me.targetSets}セット × {me.targetReps}回
-                </li>
-              ))}
-            </ul>
+              </div>
+            ))}
+          </GroupedList>
+        )}
+      </section>
+
+      {!showForm ? (
+        <Button variant="secondary" onClick={() => setShowForm(true)} className="self-start">
+          <Plus size={16} /> New Menu
+        </Button>
+      ) : (
+        <section className="rounded-2xl p-4 flex flex-col gap-4" style={{ background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-headline label">New Menu</span>
+            <button onClick={() => setShowForm(false)} className="active:opacity-60" style={{ color: 'var(--label-tertiary)' }}>
+              <X size={18} />
+            </button>
           </div>
-        ))}
-      </div>
-    </div>
+
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Menu name (e.g. Push Day)"
+            className="text-body rounded-xl px-3 py-2.5"
+            style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
+          />
+
+          <div>
+            <SectionHeading>Days</SectionHeading>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAYS_EN.map((label, i) => (
+                <Chip key={label} active={weekdays.includes(i)} onClick={() => toggleWeekday(i)}>
+                  {label}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading>Exercises</SectionHeading>
+            <div className="flex items-center gap-2 mb-3">
+              <select
+                value={pickerExerciseId}
+                onChange={(e) => setPickerExerciseId(e.target.value)}
+                className="flex-1 min-w-0 text-body rounded-xl px-3 py-2.5"
+                style={{ background: 'var(--fill-secondary)', minHeight: 44 }}
+              >
+                {exercises.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              <Button variant="secondary" onClick={addExerciseToDraft}>
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-col gap-4">
+              {draftExercises.map((de) => (
+                <div key={de.exerciseId} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-subhead label truncate">{exerciseById.get(de.exerciseId)?.name}</span>
+                    <button onClick={() => removeDraftExercise(de.exerciseId)} className="active:opacity-50 shrink-0" style={{ color: 'var(--label-tertiary)' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Stepper label="Sets" value={de.targetSets} onChange={(v) => updateDraftExercise(de.exerciseId, 'targetSets', v)} step={1} min={1} unit="set" />
+                    <Stepper label="Reps" value={de.targetReps} onChange={(v) => updateDraftExercise(de.exerciseId, 'targetReps', v)} step={1} min={1} unit="rep" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Button onClick={saveMenu}>Save Menu</Button>
+        </section>
+      )}
+    </Screen>
   )
 }
