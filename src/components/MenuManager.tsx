@@ -9,6 +9,7 @@ import { Chip } from './ui/Chip'
 import { Button } from './ui/Button'
 import { Stepper } from './ui/Stepper'
 import { Plus, X, ClipboardList } from './ui/icons'
+import { AccountSection } from './AccountSection'
 
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -57,6 +58,8 @@ export function MenuManager() {
 
   return (
     <Screen title="Menu">
+      <AccountSection />
+
       <section>
         {menus.length === 0 && !showForm && (
           <p className="text-subhead label-secondary mb-4">Create a weekly menu to add exercises with one tap on the Record screen.</p>
