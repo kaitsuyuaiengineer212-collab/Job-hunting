@@ -4,6 +4,7 @@ import { Bar, BarChart, Cell, LabelList, Legend, Pie, PieChart, ResponsiveContai
 import { useAppStore } from '../store'
 import { analyzeGaps, getExerciseTrends, getMuscleGroupVolumes, getWeeklyStats, shiftDate } from '../lib/analysis'
 import {
+  countRecentPRs,
   detectAdherenceDropoff,
   detectDistributionSkew,
   diagnoseStagnation,
@@ -22,7 +23,7 @@ import { Screen } from './Layout'
 import { Card, SectionHeading } from './ui/Card'
 import { GroupedList, Row } from './ui/List'
 import { Button } from './ui/Button'
-import { FlagDot, Flame, Layers, TrendingUp } from './ui/icons'
+import { FlagDot, Flame, Trophy, TrendingUp } from './ui/icons'
 import type { MuscleGroup } from '../types'
 
 const MUSCLE_COLORS: Record<MuscleGroup, string> = {
@@ -71,6 +72,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   const [deloadCreated, setDeloadCreated] = useState(false)
 
   const weekly = useMemo(() => getWeeklyStats(sessions, today), [sessions, today])
+  const prCount = useMemo(() => countRecentPRs(sessions, exercises, today), [sessions, exercises, today])
 
   const muscleData = useMemo(() => {
     const since = shiftDate(today, -30)
@@ -141,7 +143,7 @@ export function Today({ onGoToRecord }: { onGoToRecord: () => void }) {
   return (
     <Screen title="Today">
       <section className="grid grid-cols-3 gap-3">
-        <StatTile icon={<Layers size={18} />} label="Volume (7d)" value={`${Math.round(weekly.volume).toLocaleString()}`} unit="kg" />
+        <StatTile icon={<Trophy size={18} />} label="PRs (7d)" value={`${prCount}`} />
         <StatTile icon={<TrendingUp size={18} />} label="Sessions (7d)" value={`${weekly.sessionCount}`} />
         <StatTile icon={<Flame size={18} />} label="Streak" value={`${weekly.streakDays}`} unit="day" />
       </section>

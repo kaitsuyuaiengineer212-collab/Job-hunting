@@ -10,6 +10,7 @@ export {
   X,
   Flame,
   Layers,
+  Trophy,
   TrendingUp,
   TrendingDown,
   Minus as TrendFlat,

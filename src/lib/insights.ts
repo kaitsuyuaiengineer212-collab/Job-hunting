@@ -519,3 +519,19 @@ export function getStrengthStandard(sessions: WorkoutSession[], exerciseId: stri
   }
   return { bodyweightRatio: ratio, tier, nextTier, kgToNextTier: kgToNextTier != null ? Math.max(0, kgToNextTier) : null }
 }
+
+// Count how many sessions in the recent window set a new all-time max for their exercise.
+export function countRecentPRs(sessions: WorkoutSession[], exercises: Exercise[], today: string, windowDays = 7): number {
+  const since = shiftDate(today, -windowDays)
+  let count = 0
+  for (const exercise of exercises) {
+    let runningMax = -Infinity
+    for (const point of getExerciseHistory(sessions, exercise.id)) {
+      if (point.maxWeight > runningMax) {
+        if (point.date >= since && point.date <= today) count++
+        runningMax = point.maxWeight
+      }
+    }
+  }
+  return count
+}
