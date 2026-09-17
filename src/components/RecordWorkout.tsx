@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useAppStore } from '../store'
 import { todayISO } from '../lib/date'
@@ -31,6 +31,10 @@ export function RecordWorkout() {
   const sessionsForDate = useMemo(() => sessions.filter((s) => s.date === date), [sessions, date])
   const groupsWithExercises = useMemo(() => MUSCLE_GROUPS.filter((g) => exercises.some((e) => e.muscleGroup === g)), [exercises])
   const pickerExercises = useMemo(() => (pickerGroup ? exercises.filter((e) => e.muscleGroup === pickerGroup) : []), [exercises, pickerGroup])
+
+  useEffect(() => {
+    if (pickerGroup && pickerExercises.length === 0) setPickerGroup(null)
+  }, [pickerGroup, pickerExercises.length])
 
   const todaysMenuExercises = useMemo(() => {
     const weekday = new Date(date).getDay()
@@ -103,6 +107,11 @@ export function RecordWorkout() {
   }
 
   function removeExercise(exerciseId: string) {
+    setLogs((prev) => prev.filter((l) => l.exerciseId !== exerciseId))
+  }
+
+  function deleteExercise(exerciseId: string) {
+    setExercises((prev) => prev.filter((e) => e.id !== exerciseId))
     setLogs((prev) => prev.filter((l) => l.exerciseId !== exerciseId))
   }
 
@@ -220,9 +229,21 @@ export function RecordWorkout() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {pickerExercises.map((e) => (
-                  <Chip key={e.id} active={logs.some((l) => l.exerciseId === e.id)} tone={MUSCLE_COLORS[e.muscleGroup]} onClick={() => addExercise(e.id)}>
-                    {e.name}
-                  </Chip>
+                  <div key={e.id} className="relative inline-flex">
+                    <Chip active={logs.some((l) => l.exerciseId === e.id)} tone={MUSCLE_COLORS[e.muscleGroup]} onClick={() => addExercise(e.id)}>
+                      {e.name}
+                    </Chip>
+                    {e.isCustom && (
+                      <button
+                        aria-label={`Delete ${e.name}`}
+                        onClick={() => deleteExercise(e.id)}
+                        className="absolute flex items-center justify-center rounded-full active:opacity-70"
+                        style={{ top: -6, right: -6, width: 20, height: 20, background: 'var(--critical)', color: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
